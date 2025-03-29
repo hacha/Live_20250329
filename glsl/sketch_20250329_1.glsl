@@ -65,7 +65,7 @@ vec2 mapObjects(vec3 p) {
     if (objectType < 0.2) {
         // 三角錐の距離関数
         vec3 pyramidP = localP;
-        pyramidP.y -= pyramidHeight * 0.5; // 中心を基準に配置
+        pyramidP.y -= pyramidHeight * 0.25; // 中心を基準に配置
         
         // 三角錐の距離計算
         float h = pyramidHeight;
@@ -290,9 +290,13 @@ vec3 calcNormal(vec3 p)
         // カメラの設定
         float camRadius = 17.0; // カメラの回転半径
         float camHeight = 3.2; // カメラの基本の高さ
-        float camSpeed = -0.3; // カメラの回転速度
+        float camSpeed = -0.2; // カメラの回転速度
         float camVerticalSpeed = 0.15; // カメラの上下運動の速度
         float camVerticalRange = 4.0; // カメラの上下運動の範囲
+        
+        // 注視点の動きのパラメータ
+        float targetSpeed = 0.1; // 注視点の移動速度
+        float targetRange = 2.0; // 注視点の移動範囲
         
         // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
@@ -301,8 +305,12 @@ vec3 calcNormal(vec3 p)
             camRadius * sin(iTime * camSpeed)
         );
         
-        // 注視点（球体の位置）
-        vec3 target = vec3(0.0, 1.0, 0.0);
+        // 注視点（ゆっくりと動く）
+        vec3 target = vec3(
+            targetRange * sin(iTime * targetSpeed * 0.7),
+            1.0 + 0.5 * sin(iTime * targetSpeed * 0.5),
+            targetRange * cos(iTime * targetSpeed * 0.9)
+        );
         
         // カメラの向きを計算
         vec3 forward = normalize(target - ro);
@@ -316,7 +324,7 @@ vec3 calcNormal(vec3 p)
         float t = 0.0;
         float tmax = 80.0;
         float epsilon = 0.0002;
-        float nearClip = 0.1; // ニアクリップ距離
+        float nearClip = 0.15; // ニアクリップ距離
         
         // 初期位置をニアクリップ位置に設定
         t = nearClip;
@@ -397,7 +405,7 @@ vec3 calcNormal(vec3 p)
                 objColor = baseColor * vec3(0.6, 0.8, 1.0);
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
-            } else if (material < 3.05) { // 三角錐
+            } else if (material < 2.05) { // 三角錐
                 // グリッドの位置に基づいて色を変化（より鮮やかに）
                 vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
                 vec3 baseColor = vec3(
@@ -413,7 +421,7 @@ vec3 calcNormal(vec3 p)
             }
             
             // 単純な拡散照明
-            vec3 light = normalize(vec3(1.0, 2.0, - 1.0));
+            vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
             float diff = max(dot(n, light), 0.0);
             
             // 環境光+拡散光
