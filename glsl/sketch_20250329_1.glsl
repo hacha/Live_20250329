@@ -415,11 +415,11 @@ vec3 calcNormal(vec3 p) {
         // ハッシュ関数を使用してランダムな変化を追加
         float h = hash(vec3(id, time * 0.1));
         
-        // 4色のカラーパレット（明るく鮮やかな色）
-        vec3 col1 = vec3(0.95, 0.4, 0.2); // オレンジレッド
-        vec3 col2 = vec3(0.2, 0.6, 0.9); // スカイブルー
-        vec3 col3 = vec3(0.9, 0.8, 0.2); // イエロー
-        vec3 col4 = vec3(0.4, 0.9, 0.4); // ライトグリーン
+        // 4色のカラーパレット（より明るい鮮やかな色）
+        vec3 col1 = vec3(1.0, 0.5, 0.3); // 明るいオレンジ
+        vec3 col2 = vec3(0.3, 0.7, 1.0); // 明るいスカイブルー
+        vec3 col3 = vec3(1.0, 0.9, 0.3); // 明るいイエロー
+        vec3 col4 = vec3(0.5, 1.0, 0.5); // 明るいグリーン
         
         // パターンと時間に基づいて色を選択
         float colorSelect = finalPattern + time * 0.1;
@@ -434,11 +434,11 @@ vec3 calcNormal(vec3 p) {
             color = mix(col4, col1, colorSelect - 3.0);
         }
         
-        // パターンの強度に基づいて色を調整
-        color = mix(color * 0.5, color, finalPattern);
+        // パターンの強度に基づいて色を調整（明るさを保持）
+        color = mix(color * 0.7, color, finalPattern);
         
-        // 全体的な明るさの調整（背景として控えめに）
-        return color * (0.2 + 0.1 * sin(time * 0.2));
+        // 全体的な明るさの調整（より明るく）
+        return color * (0.6 + 0.2 * sin(time * 0.2));
     }
     
     // カメラポイントを取得する関数
@@ -611,8 +611,8 @@ vec3 calcNormal(vec3 p) {
             float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0);
             col = col * mix(vec3(0.2), vec3(1.0), shadow);
         } else {
-            // 背景にナバホ族の模様を適用
-            vec2 bgUV = rd.xy / rd.z;
+            // 背景にナバホ族の模様を適用（レイの方向に基づいて）
+            vec2 bgUV = rd.xy / (rd.z * 0.5 + 0.5); // UV座標の計算を調整
             col = navajoPattern(bgUV, iTime);
         }
         
