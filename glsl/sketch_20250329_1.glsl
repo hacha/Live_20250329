@@ -34,6 +34,10 @@ vec3 getFlyingCubePosition(float time) {
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
     
+    // 原点基準のカレイドスコープ効果
+    float kaleidRange = 8.0;
+    basePos = abs(mod(basePos + kaleidRange, 2.0 * kaleidRange) - kaleidRange);
+    
     // XZ平面でのフォールディング
     float foldSize = 8.0; // フォールディングの範囲
     basePos.x = abs(mod(basePos.x + foldSize, 2.0 * foldSize) - foldSize) - foldSize * 0.5;
@@ -114,7 +118,7 @@ vec2 mapObjects(vec3 p) {
     float distToCube = length(p - cubePos) - 2.0; // キューブのサイズを考慮
     
     // キューブに近い場合、球体を変形
-    float cubeInfluenceRange = 3.0; // 変形が始まる距離
+    float cubeInfluenceRange = 5.0; // 変形が始まる距離
     float cubeInfluenceFactor = smoothstep(cubeInfluenceRange, 0.0, distToCube);
     objDist = mix(objDist, distToCube * 0.5, cubeInfluenceFactor); // キューブに向かって徐々に変形
     
@@ -475,7 +479,7 @@ vec3 calcNormal(vec3 p)
                 // 反射しなかった場合は空の色（暗めのグラデーション）
                 if (!hitSomething) {
                     float skyGrad = 0.5 + 0.5 * reflectDir.y;
-                    reflectCol = vec3(0.2, 0.3, 0.4) * skyGrad;
+                    reflectCol = vec3(0.4, 0.5, 0.6) * skyGrad;
                 }
                 
                 // フレネル効果の計算
