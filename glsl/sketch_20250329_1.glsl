@@ -110,6 +110,14 @@ vec2 mapObjects(vec3 p) {
     float sphereRadius = 0.6;
     float objDist = length(localP) - sphereRadius;
     
+    // キューブとの距離を計算
+    float distToCube = length(p - cubePos) - 2.0; // キューブのサイズを考慮
+    
+    // キューブに近い場合、球体を変形
+    float cubeInfluenceRange = 3.0; // 変形が始まる距離
+    float cubeInfluenceFactor = smoothstep(cubeInfluenceRange, 0.0, distToCube);
+    objDist = mix(objDist, distToCube * 0.5, cubeInfluenceFactor); // キューブに向かって徐々に変形
+    
     // 地面からの距離に応じたスムージング
     float groundDistance = spherePos.y;
     float smoothRange = 1.2;
@@ -424,7 +432,7 @@ vec3 calcNormal(vec3 p)
                     0.5 + 0.5 * sin(iTime * 1.1),
                     0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
                     0.5 + 0.5 * sin(iTime * 1.5 + PI)
-                ) * 0.2; // ベース色を暗くする
+                ) * 0.75; // ベース色を暗くする
                 
                 // 反射レイの計算
                 vec3 reflectDir = reflect(rd, n);
