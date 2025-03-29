@@ -190,7 +190,7 @@ vec3 rgb2hsv(vec3 c) {
     vec4 q = mix(vec4(p.xyw, c.r), vec4(c.r, p.yzx), step(p.x, c.r));
     
     float d = q.x - min(q.w, q.y);
-    float e = 1.0e - 10;
+    float e = 0.0000000001; // 1.0e-10 をリテラルで表現
     return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
 }
 
