@@ -755,11 +755,11 @@ vec3 calcNormal(vec3 p)
         
         // フィッシュアイレンズ効果の実装
         float baseStrength = 15.5;
-        float bpm = 120.0;
+        float bpm = 125.0 / 4.0;
         float fourOnFloor = (bpm / 60.0) * 4.0; // 120BPMの4つ打ち = 8Hz
         
         // キックドラムのような強いアクセント
-        float kick = step(0.0, sin(iTime * PI * fourOnFloor)) * 0.8;
+        float kick = step(0.0, sin(iTime * PI * fourOnFloor)) * 10.8;
         
         // よりスムーズなサイドチェーンエフェクト
         float sidechain = pow(abs(sin(iTime * PI * fourOnFloor)), 0.3) * 0.5;
@@ -852,36 +852,61 @@ vec3 calcNormal(vec3 p)
                 // 反射方向を計算
                 vec3 reflectDir = reflect(rd, n);
                 
-                // カラフルな背景パターン（既存のコードから）
+                // カラフルな背景パターン
                 float stripeWidth = 0.2;
                 float stripeFreq = 1.0 / stripeWidth;
                 float scrollSpeed = 5.0;
                 
-                // 複数の方向のスクロールを組み合わせる
-                vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed;
-                vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7;
+                // 波動効果のパラメータ
+                float waveFreq = 3.0;
+                float waveAmp = 0.3;
+                float waveSpeed = 2.0;
                 
-                // 反射方向を使用してパターンを生成
-                float pattern1 = fract(dot(reflectDir.xy + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
-                float pattern2 = fract(dot(reflectDir.xy + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
+                // 波動関数（背景用）
+                float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
+                float wave2 = cos(rd.y * waveFreq * 1.3 + iTime * waveSpeed * 0.7) * waveAmp;
+                float wave3 = sin((rd.x + rd.y) * waveFreq * 0.8 - iTime * waveSpeed * 1.2) * waveAmp;
                 
-                // 時間に基づく色相の変化
-                float hue1 = pattern1 + iTime * 0.1;
-                float hue2 = pattern2 - iTime * 0.15;
+                // 波動効果の合成
+                vec2 waveOffset = vec2(wave1 + wave2, wave2 + wave3);
+                
+                // 変調パラメータ
+                float modulateFreq = 2.0;
+                float modulateAmp = 0.4;
+                float modulateSpeed = 1.5;
+                
+                // 変調効果
+                float modulation1 = sin(iTime * modulateSpeed + rd.x * modulateFreq) * modulateAmp;
+                float modulation2 = cos(iTime * modulateSpeed * 1.2 + rd.y * modulateFreq * 0.8) * modulateAmp;
+                
+                // スクロール方向に波動と変調を適用
+                vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed + waveOffset;
+                vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7 + waveOffset * 0.8;
+                
+                // レイ方向を波動と変調で歪ませる
+                vec2 distortedRay = rd.xy + waveOffset + vec2(modulation1, modulation2);
+                
+                // パターンの生成
+                float pattern1 = fract(dot(distortedRay + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
+                float pattern2 = fract(dot(distortedRay + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
+                
+                // 時間に基づく色相の変化（波動と変調の影響を加える）
+                float hue1 = pattern1 + iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
+                float hue2 = pattern2 - iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
                 
                 // HSVからRGBへの変換（1つ目のパターン）
-                vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8 * 1.8, 0.3));
-                vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7 * 1.8, 0.25));
+                vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
+                vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7, 0.25));
                 
                 // レイの方向に基づいて色を混ぜる
-                float mixFactor = smoothstep(-0.5, 0.5, dot(reflectDir.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
+                float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
                 objColor = mix(color1, color2, mixFactor);
                 
                 // 追加のカラーエフェクト
                 vec3 rainbowEffect = vec3(
-                    sin(reflectDir.y * 3.0 + iTime) * 0.5 + 0.5,
-                    cos(reflectDir.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
-                    sin((reflectDir.x + reflectDir.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
+                    sin(rd.y * 3.0 + iTime) * 0.5 + 0.5,
+                    cos(rd.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
+                    sin((rd.x + rd.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
                 );
                 
                 // コントラストを1.4倍に調整
@@ -983,17 +1008,42 @@ vec3 calcNormal(vec3 p)
             float stripeFreq = 1.0 / stripeWidth;
             float scrollSpeed = 5.0;
             
-            // 複数の方向のスクロールを組み合わせる
-            vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed;
-            vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7;
+            // 波動効果のパラメータ
+            float waveFreq = 3.0;
+            float waveAmp = 0.3;
+            float waveSpeed = 2.0;
             
-            // 2つのストライプパターンを生成
-            float pattern1 = fract(dot(rd.xy + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
-            float pattern2 = fract(dot(rd.xy + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
+            // 波動関数（背景用）
+            float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
+            float wave2 = cos(rd.y * waveFreq * 1.3 + iTime * waveSpeed * 0.7) * waveAmp;
+            float wave3 = sin((rd.x + rd.y) * waveFreq * 0.8 - iTime * waveSpeed * 1.2) * waveAmp;
             
-            // 時間に基づく色相の変化
-            float hue1 = pattern1 + iTime * 0.1;
-            float hue2 = pattern2 - iTime * 0.15;
+            // 波動効果の合成
+            vec2 waveOffset = vec2(wave1 + wave2, wave2 + wave3);
+            
+            // 変調パラメータ
+            float modulateFreq = 2.0;
+            float modulateAmp = 0.4;
+            float modulateSpeed = 1.5;
+            
+            // 変調効果
+            float modulation1 = sin(iTime * modulateSpeed + rd.x * modulateFreq) * modulateAmp;
+            float modulation2 = cos(iTime * modulateSpeed * 1.2 + rd.y * modulateFreq * 0.8) * modulateAmp;
+            
+            // スクロール方向に波動と変調を適用
+            vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed + waveOffset;
+            vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7 + waveOffset * 0.8;
+            
+            // レイ方向を波動と変調で歪ませる
+            vec2 distortedRay = rd.xy + waveOffset + vec2(modulation1, modulation2);
+            
+            // パターンの生成
+            float pattern1 = fract(dot(distortedRay + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
+            float pattern2 = fract(dot(distortedRay + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
+            
+            // 時間に基づく色相の変化（波動と変調の影響を加える）
+            float hue1 = pattern1 + iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
+            float hue2 = pattern2 - iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
             
             // HSVからRGBへの変換（1つ目のパターン）
             vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
