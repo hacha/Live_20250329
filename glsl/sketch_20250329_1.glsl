@@ -30,7 +30,7 @@ vec3 getFlyingCubePosition(float time) {
     // 基本的な動きを計算
     vec3 basePos = vec3(
         5.0 * sin(time * 0.7),
-        4.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
+        5.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
     
@@ -75,7 +75,7 @@ vec2 mapObjects(vec3 p) {
     
     // 飛び回るキューブの処理
     vec3 cubePos = getFlyingCubePosition(iTime);
-    vec3 cubeSize = vec3(1.0); // キューブのサイズを2倍に
+    vec3 cubeSize = vec3(2.0); // キューブのサイズを2倍に
     
     // キューブの回転
     vec3 rotatedP = p - cubePos;
