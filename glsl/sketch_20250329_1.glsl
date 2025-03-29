@@ -30,7 +30,7 @@ vec3 getFlyingCubePosition(float time) {
     // 基本的な動きを計算
     vec3 basePos = vec3(
         5.0 * sin(time * 0.7),
-        3.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
+        4.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
     
@@ -310,7 +310,7 @@ vec3 calcNormal(vec3 p)
         
         // カメラの設定
         float camRadius = 17.0; // カメラの回転半径
-        float camHeight = 3.2; // カメラの基本の高さ
+        float camHeight = 4.2; // カメラの基本の高さを3.2から4.2に変更
         float camSpeed = -0.2; // カメラの回転速度
         float camVerticalSpeed = 0.15; // カメラの上下運動の速度
         float camVerticalRange = 4.0; // カメラの上下運動の範囲
