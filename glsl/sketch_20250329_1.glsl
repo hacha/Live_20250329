@@ -313,7 +313,13 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                     vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
                         // 親の位置から少し遅れて追従
                         float delayedTime = time - delay;
-                        return getFlyingCubePosition(delayedTime);
+                        vec3 basePos = getFlyingCubePosition(delayedTime);
+                        
+                        // 親の位置と子の位置の差分を計算
+                        vec3 diff = basePos - parentPos;
+                        
+                        // 距離を20%広げる
+                        return parentPos + diff * 1.2;
                     }
                     
                     /**
