@@ -294,6 +294,13 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         return hsv2rgb(hsv);
                     }
                     
+                    // 子キューブの位置を計算する関数
+                    vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
+                        // 親の位置から少し遅れて追従
+                        float delayedTime = time - delay;
+                        return getFlyingCubePosition(delayedTime);
+                    }
+                    
                     /**
                     * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
                     *
@@ -307,16 +314,16 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // 距離と材質ID（最初は無効な値で初期化）
                         vec2 res = vec2(1e10, - 1.0);
                         
-                        // 飛び回るキューブの処理
+                        // 親キューブの位置と処理
                         vec3 cubePos = getFlyingCubePosition(iTime);
                         vec3 cubeSize = vec3(2.0);
                         
-                        // キューブの回転
+                        // 親キューブの回転
                         vec3 rotatedP = p - cubePos;
                         rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
                         
                         // モーフィング係数の計算
-                        float morphTime = mod(iTime * 0.2, 4.0); // 4秒周期でゆっくり変化
+                        float morphTime = mod(iTime * 0.2, 4.0);
                         float morphFactor;
                         if (morphTime < 1.0) {
                             morphFactor = 0.0;
@@ -328,12 +335,32 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             morphFactor = 1.0 - smoothstep(0.0, 1.0, morphTime - 3.0);
                         }
                         
-                        // キューブの距離計算（モーフィングを適用）
+                        // 親キューブの距離計算
                         float cubeDist = morphDistance(rotatedP, cubeSize, morphFactor);
-                        
-                        // キューブの距離と材質IDを更新
                         if (cubeDist < res.x) {
                             res = vec2(cubeDist, 4.0);
+                        }
+                        
+                        // 3つの子キューブを追加
+                        float childDelays[3] = float[3](0.3, 0.6, 0.9); // 遅延時間
+                        float childSizes[3] = float[3](0.85, 0.50, 0.30); // サイズ比率
+                        
+                        for(int i = 0; i < 3; i ++ ) {
+                            // 子キューブの位置を計算
+                            vec3 childPos = getChildCubePosition(cubePos, iTime, childDelays[i]);
+                            vec3 childRotatedP = p - childPos;
+                            childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - childDelays[i]) * childRotatedP;
+                            
+                            // 子キューブのサイズを設定
+                            vec3 childSize = cubeSize * childSizes[i];
+                            
+                            // 子キューブの距離計算
+                            float childDist = morphDistance(childRotatedP, childSize, morphFactor);
+                            
+                            // 子キューブの距離と材質IDを更新（材質IDは4.1, 4.2, 4.3）
+                            if (childDist < res.x) {
+                                res = vec2(childDist, 4.1 + float(i) * 0.1);
+                            }
                         }
                         
                         // レペテーションの設定（x-z平面のみ）
@@ -736,13 +763,19 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     objColor = getCubeColor(cellIndex, iTime);
                                     float blinkFactor = blink(cellIndex, iTime);
                                     objColor *= blinkFactor;
-                                } else if (material < 4.5) { // 飛び回るキューブ
-                                    // 時間に基づいて色が変化する虹色のような効果
+                                } else if (material < 4.5) { // 親キューブと子キューブ
+                                    // 基本の虹色効果
                                     objColor = vec3(
                                         0.5 + 0.5 * sin(iTime * 1.1),
                                         0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
                                         0.5 + 0.5 * sin(iTime * 1.5 + PI)
-                                    ) * 0.75; // ベース色を暗くする
+                                    ) * 0.75;
+                                    
+                                    // 子キューブの場合は色を少し暗く
+                                    if (material > 4.05) {
+                                        float childIndex = (material - 4.1) / 0.1; // 0, 1, 2
+                                        objColor *= mix(0.9, 0.6, childIndex / 2.0); // だんだん暗く
+                                    }
                                     
                                     // 反射レイの計算
                                     vec3 reflectDir = reflect(rd, n);
