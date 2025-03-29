@@ -350,15 +350,15 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // 親の位置と子の位置の差分を計算
                         vec3 diff = basePos - parentPos;
                         
-                        // 距離の伸縮を計算（より大きな変動）
-                        float stretchFactor = 1.0 + sin(time * 2.0 + delay * 3.0) * 1.5; // 0.5から2.5の範囲で変動
+                        // フレーム内での相対位置（0.0から1.0）
+                        float framePosition = delay / (0.15 * 20.0); // 20は子キューブの総数
                         
-                        // さらに大きな周期の伸縮を追加
-                        float slowStretch = cos(time * 0.5 + delay) * 0.8; // -0.8から0.8の範囲
-                        stretchFactor += slowStretch;
+                        // 距離の伸縮を計算
+                        float baseStretch = 3.0; // 基本の伸縮範囲
+                        float stretchPhase = time * 2.0; // 伸縮の周期
                         
-                        // 最終的な伸縮範囲を0.3から3.0に制限
-                        stretchFactor = clamp(stretchFactor, 0.3, 3.0);
+                        // サインウェーブで伸縮（0.3から3.0の範囲）
+                        float stretchFactor = mix(0.3, 3.0, (sin(stretchPhase + framePosition * PI * 2.0) * 0.5 + 0.5));
                         
                         return parentPos + diff * stretchFactor;
                     }
