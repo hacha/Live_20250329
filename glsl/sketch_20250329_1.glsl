@@ -274,9 +274,40 @@ vec3 calcNormal(vec3 p)
         float tmax = 20.0;
         float epsilon = 0.001;
         
+        // 球体からの影響を蓄積
+        vec3 sphereInfluence = vec3(0.0);
+        float totalDensity = 0.0;
+        
         for(int i = 0; i < 100; i ++ ) {
             vec3 p = ro + rd * t;
             float d = map(p);
+            
+            // 球体からの影響を計算
+            vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+            vec3 q = mod(p + 0.5 * vec3(6.0), vec3(6.0)) - 0.5 * vec3(6.0);
+            vec3 spherePos = vec3(0.0, 1.0, 0.0);
+            vec3 localP = q - spherePos;
+            float sphereDist = length(localP) - 1.0;
+            
+            // 球体の色を取得
+            vec3 baseColor = vec3(
+                0.5 + 0.5 * sin(cellIndex.x * 1.5),
+                0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
+                0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
+            );
+            vec3 sphereColor = baseColor * vec3(0.6, 0.8, 1.0);
+            
+            // 点滅効果を適用
+            float blinkFactor = blink(cellIndex, iTime);
+            sphereColor *= blinkFactor;
+            
+            // 距離に基づいて影響を計算
+            float influence = smoothstep(2.0, 0.0, abs(sphereDist));
+            influence *= 0.1; // 影響の強さを調整
+            
+            // 影響を蓄積
+            sphereInfluence += sphereColor * influence;
+            totalDensity += influence;
             
             // 十分に近づいたか、遠すぎる場合は終了
             if (d < epsilon || t > tmax)break;
@@ -320,8 +351,8 @@ vec3 calcNormal(vec3 p)
                 // 点滅効果を適用
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
-            } else { // 棘の部分（削除）
-                objColor = vec3(1.0); // 白色（この部分は実際には使用されない）
+            } else { // 未使用
+                objColor = vec3(1.0);
             }
             
             // 単純な拡散照明
@@ -332,25 +363,7 @@ vec3 calcNormal(vec3 p)
             if (material < 0.5) { // 地面の場合はグリッドラインを強調するため拡散を抑える
                 col = objColor * (0.9 + 0.1 * diff);
             } else {
-                // 棘の部分は発光を強調
-                if (material > 2.05) {
-                    // 発光部分はライティングの影響を減らし、自己発光を強調
-                    col = objColor * (0.8 + 0.2 * diff);
-                    
-                    // bloom効果の追加
-                    float bloomIntensity = 2.0 + sin(iTime * 2.0);
-                    // グリッドの位置に基づいてbloomの色も変化
-                    vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                    vec3 baseBloom = vec3(
-                        1.0 + 0.2 * sin(cellIndex.x * 1.5),
-                        0.5 + 0.2 * sin(cellIndex.y * 1.7 + 2.0),
-                        0.2 + 0.2 * sin(cellIndex.z * 1.9 + 4.0)
-                    );
-                    vec3 bloomColor = baseBloom * bloomIntensity;
-                    col += bloomColor * smoothstep(0.0, 1.0, length(objColor));
-                } else {
-                    col = objColor * (0.3 + 0.7 * diff);
-                }
+                col = objColor * (0.3 + 0.7 * diff);
             }
             
             // ソフトシャドウを計算
@@ -360,12 +373,11 @@ vec3 calcNormal(vec3 p)
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
             
             // 影を適用（ソフトシャドウ）
-            if (material > 2.05) {
-                col = col * mix(vec3(0.6), lightColor, shadow);
-            } else {
-                col = col * mix(vec3(0.2), lightColor, shadow);
-            }
+            col = col * mix(vec3(0.2), lightColor, shadow);
         }
+        
+        // 球体の影響を加算
+        col += sphereInfluence;
         
         // 透明なグリッドを描画
         if (SHOW_GRID) {
