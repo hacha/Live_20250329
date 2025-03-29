@@ -376,25 +376,31 @@ vec3 calculateCameraPosition(float time, int cameraId) {
     }
 }
 
+// 球体のSDF
+float sdSphere(vec3 p, float r) {
+    return length(p) - r;
+}
+
 vec2 mapObjects(vec3 p) {
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
-    // 親キューブの位置と処理
-    vec3 cubePos = getFlyingCubePosition(iTime);
-    vec3 cubeSize = getConvulsiveScale(iTime); // 痙攣的な拡縮を適用
+    // 親球体の位置と処理
+    vec3 spherePos = getFlyingCubePosition(iTime); // 関数名は変更せずに使用
+    vec3 scaleVec = getConvulsiveScale(iTime); // スケールベクトルを取得
+    float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0; // 平均半径を計算
     
-    // 親キューブの回転
-    vec3 rotatedP = p - cubePos;
+    // 親球体の回転（見た目に影響しないが、一貫性のために維持）
+    vec3 rotatedP = p - spherePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
-    // 親キューブの距離計算（モーフィングなし）
-    float cubeDist = sdBox(rotatedP, cubeSize);
-    if (cubeDist < res.x) {
-        res = vec2(cubeDist, 4.0);
+    // 親球体の距離計算
+    float sphereDist = sdSphere(rotatedP, sphereRadius);
+    if (sphereDist < res.x) {
+        res = vec2(sphereDist, 4.0);
     }
     
-    // 20個の子キューブを追加
+    // 20個の子球体を追加
     const int NUM_CHILDREN = 20;
     float baseDelay = 0.15; // 基本の遅延時間
     float maxSize = 0.95; // 最大サイズ（親の85%）
@@ -408,18 +414,18 @@ vec2 mapObjects(vec3 p) {
         float t = float(i) / float(NUM_CHILDREN - 1);
         float size = mix(maxSize, minSize, t);
         
-        // 子キューブの位置を計算
-        vec3 childPos = getChildCubePosition(cubePos, iTime, delay);
+        // 子球体の位置を計算
+        vec3 childPos = getChildCubePosition(spherePos, iTime, delay); // 関数名は変更せずに使用
         vec3 childRotatedP = p - childPos;
         childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
         
-        // 子キューブのサイズを設定
-        vec3 childSize = cubeSize * size;
+        // 子球体のサイズを設定
+        float childRadius = sphereRadius * size;
         
-        // 子キューブの距離計算（モーフィングなし）
-        float childDist = sdBox(childRotatedP, childSize);
+        // 子球体の距離計算
+        float childDist = sdSphere(childRotatedP, childRadius);
         
-        // 子キューブの距離と材質IDを更新（材質IDは4.1から4.99）
+        // 子球体の距離と材質IDを更新（材質IDは4.1から4.99）
         if (childDist < res.x) {
             res = vec2(childDist, 4.1 + float(i) * 0.045);
         }
@@ -814,64 +820,23 @@ vec3 calcNormal(vec3 p)
                 objColor = getCubeColor(cellIndex, iTime) * 0.5; // 色を半分の明るさに
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
-            } else if (material < 4.5) { // 親キューブと子キューブ
-                // 基本の虹色効果（暗めに）
-                objColor = vec3(
-                    0.3 + 0.3 * sin(iTime * 1.1),
-                    0.3 + 0.3 * sin(iTime * 1.3 + PI * 0.5),
-                    0.3 + 0.3 * sin(iTime * 1.5 + PI)
-                ) * 0.5;
+            } else if (material < 4.5) { // 親球体と子球体
+                // 基本色を設定
+                objColor = vec3(0.8, 0.2, 0.3); // 赤みがかった色
                 
-                // 子キューブの場合は色をさらに暗く
-                if (material > 4.05) {
-                    float childIndex = (material - 4.1) / 0.045; // 0から19
-                    objColor *= mix(0.7, 0.2, childIndex / 19.0); // より暗く
+                // 材質IDに基づいて色を変化
+                float childIndex = (material - 4.1) / 0.045; // 0から19の値に変換
+                if (material > 4.0) {
+                    // 子球体の色をグラデーション
+                    float t = childIndex / 19.0; // 0から1の値に正規化
+                    objColor = mix(vec3(0.8, 0.2, 0.3), vec3(0.3, 0.2, 0.8), t);
                 }
                 
-                // 反射計算の最適化（反射の回数を減らす）
-                vec3 reflectDir = reflect(rd, n);
-                
-                // 反射レイマーチングの簡略化
-                vec3 reflectPos = p + n * 0.002;
-                float reflectT = 0.0;
-                float maxReflectDist = 10.0; // 20.0から10.0に短縮
-                vec3 reflectCol = vec3(0.0);
-                bool hitSomething = false;
-                
-                // 反射レイマーチングの回数を削減
-                for(int i = 0; i < 32; i ++ ) { // 50から32に削減
-                    vec3 rp = reflectPos + reflectDir * reflectT;
-                    float rd = map(rp);
-                    
-                    if (rd < epsilon) {
-                        hitSomething = true;
-                        float rMaterial = getMaterial(rp);
-                        
-                        // 反射色の計算を簡略化
-                        if (rMaterial < 0.5) {
-                            reflectCol = vec3(0.05);
-                        } else {
-                            reflectCol = vec3(0.3);
-                        }
-                        break;
-                    }
-                    
-                    reflectT += rd * 0.8; // より積極的なステップ
-                    if (reflectT > maxReflectDist)break;
-                }
-                
-                // 反射しなかった場合は簡略化された空の色
-                if (!hitSomething) {
-                    reflectCol = vec3(0.2);
-                }
-                
-                // フレネル効果と色の合成（簡略化）
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0); // 5.0から3.0に変更
-                objColor = mix(objColor, reflectCol, 0.4 + fresnel * 0.2);
-                
-                // 鏡面ハイライトの追加（弱めに）
-                float specular = pow(max(dot(reflectDir, baseLight), 0.0), 16.0);
-                objColor += vec3(0.5) * specular * 0.2;
+                // 光沢効果を追加
+                vec3 n = calcNormal(p);
+                vec3 r = reflect(normalize(p - ro), n);
+                float spec = pow(max(0.0, r.y), 32.0);
+                objColor += vec3(spec) * 0.5;
             } else if (material < 3.5) { // 回転する平面
                 // 平面の色を時間とともに変化させる
                 objColor = vec3(
