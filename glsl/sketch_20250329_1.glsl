@@ -441,15 +441,15 @@ vec3 calcNormal(vec3 p) {
     
     // カメラポイントを取得する関数
     vec3 getCameraPoint(float index) {
-        // 8つのカメラポイントを定義
-        if (index < 1.0)return vec3(0.0, 5.0, - 10.0); // 正面やや上から
-        if (index < 2.0)return vec3(10.0, 5.0, - 5.0); // 右前上から
-        if (index < 3.0)return vec3(10.0, 2.0, 0.0); // 右側から
-        if (index < 4.0)return vec3(10.0, 5.0, 5.0); // 右後ろ上から
-        if (index < 5.0)return vec3(0.0, 5.0, 10.0); // 背面やや上から
-        if (index < 6.0)return vec3(-10.0, 5.0, 5.0); // 左後ろ上から
-        if (index < 7.0)return vec3(-10.0, 2.0, 0.0); // 左側から
-        return vec3(-10.0, 5.0, - 5.0); // 左前上から
+        // カメラの位置をより近くに
+        if (index < 1.0)return vec3(0.0, 3.0, - 8.0); // 正面やや上から
+        if (index < 2.0)return vec3(8.0, 3.0, - 4.0); // 右前上から
+        if (index < 3.0)return vec3(8.0, 2.0, 0.0); // 右側から
+        if (index < 4.0)return vec3(8.0, 3.0, 4.0); // 右後ろ上から
+        if (index < 5.0)return vec3(0.0, 3.0, 8.0); // 背面やや上から
+        if (index < 6.0)return vec3(-8.0, 3.0, 4.0); // 左後ろ上から
+        if (index < 7.0)return vec3(-8.0, 2.0, 0.0); // 左側から
+        return vec3(-8.0, 3.0, - 4.0); // 左前上から
     }
     
     // ピクセルグリッチエフェクト
@@ -494,16 +494,19 @@ vec3 calcNormal(vec3 p) {
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
-        // カメラの切り替え周期（8秒）
-        float period = 8.0;
+        // カメラの切り替え周期を短く（8秒→3秒）
+        float period = 3.0;
         float cameraIndex = floor(mod(iTime, period * 8.0) / period);
         
         // 現在のカメラポイントと次のカメラポイントを取得
         vec3 currentCam = getCameraPoint(cameraIndex);
         vec3 nextCam = getCameraPoint(mod(cameraIndex + 1.0, 8.0));
         
-        // スムーズな遷移のための補間
-        float transition = smoothstep(0.0, 1.0, fract(iTime / period));
+        // より急激な遷移のための補間
+        float transitionDuration = 0.5; // 遷移時間を0.5秒に
+        float normalizedTime = fract(iTime / period);
+        float transition = smoothstep(0.0, transitionDuration / period, normalizedTime);
+        transition = 1.0 - pow(1.0 - transition, 3.0); // イージング関数を追加
         vec3 ro = mix(currentCam, nextCam, transition);
         
         vec3 target = vec3(0.0); // 注視点は中心に固定
