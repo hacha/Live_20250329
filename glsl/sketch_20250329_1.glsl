@@ -56,29 +56,49 @@ vec2 mapObjects(vec3 p) {
     
     // 棘の生成
     float spikeLength = 1.0;
-    float spikeCount = 8.0;
+    float spikeCount = 6.0; // 各軸方向の棘の数
     // 各球体で位相をずらす
     float timeOffset = dot(cellIndex, vec3(1.2, 1.4, 1.6));
     float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0 + timeOffset); // パルスアニメーション
     
-    // 正規化された位置ベクトル（すでに球体の中心からの方向）
-    vec3 nq = normalize(localP);
-    
-    // 棘のパターンを生成
+    // 直方体の棘を生成
     float spike = 0.0;
-    float freq = 8.0;
-    spike += sin(nq.x * freq + iTime + timeOffset) * cos(nq.y * freq + iTime + timeOffset) * sin(nq.z * freq);
-    spike = pow(abs(spike), 2.0) * spikeLength * spikePulse;
+    vec3 spikeDims = vec3(0.15, 0.15, 1.0); // 直方体の棘のサイズ（x, y, z）
+    
+    // 6方向の直方体の棘を生成
+    for(float i = 0.0; i < 6.0; i ++ ) {
+        // 各方向の基本ベクトル
+        vec3 dir;
+        if (i < 2.0)dir = vec3(1.0, 0.0, 0.0) * (i < 1.0 ? 1.0 : -1.0); // x軸方向
+        else if (i < 4.0)dir = vec3(0.0, 1.0, 0.0) * (i < 3.0 ? 1.0 : -1.0); // y軸方向
+        else dir = vec3(0.0, 0.0, 1.0) * (i < 5.0 ? 1.0 : -1.0); // z軸方向
+        
+        // 直方体の棘の位置を計算
+        vec3 spikePos = localP - dir * (sphereRadius + spikeLength * 0.5 * spikePulse);
+        
+        // 直方体の棘の回転
+        vec3 rotatedPos = spikePos;
+        if (abs(dir.x) > 0.5)rotatedPos = vec3(spikePos.x, spikePos.y, spikePos.z);
+        else if (abs(dir.y) > 0.5)rotatedPos = vec3(spikePos.z, spikePos.y, spikePos.x);
+        else rotatedPos = vec3(spikePos.x, spikePos.z, spikePos.y);
+        
+        // 直方体の距離関数
+        vec3 q = abs(rotatedPos) - spikeDims * vec3(1.0, 1.0, spikePulse);
+        float boxDist = length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+        
+        // 最小距離を更新
+        spike = min(spike, boxDist);
+    }
     
     // 球体の表面からの距離に基づいて棘を適用
     float surfaceDist = abs(sphereDist);
     float spikeMask = smoothstep(0.0, 0.3, surfaceDist);
-    float spikedSphereDist = sphereDist - spike * (1.0 - spikeMask);
+    float spikedSphereDist = min(sphereDist, spike); // unionで結合
     
     // 球体と棘の距離と材質IDを更新
     if (spikedSphereDist < res.x) {
         // 棘の部分は異なるマテリアルID（2.1）を割り当てる
-        float spikeMaterial = mix(2.1, 2.0, spikeMask);
+        float spikeMaterial = mix(2.1, 2.0, step(spike, sphereDist));
         res = vec2(spikedSphereDist, spikeMaterial);
     }
     
