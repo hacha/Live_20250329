@@ -433,17 +433,17 @@ vec3 calcNormal(vec3 p) {
     // ピクセルグリッチエフェクト
     vec3 pixelGlitch(vec3 color, vec2 uv, float time) {
         // グリッドサイズの定義（時間とともに変化）
-        float gridSize = 20.0 + sin(time * 0.5) * 10.0;
+        float gridSize = 15.0 + sin(time * 0.3) * 5.0; // より遅い変化
         vec2 grid = floor(uv * gridSize) / gridSize;
         
         // ノイズ生成
-        float noise = hash(vec3(grid * 50.0, time));
-        float glitchStr = step(0.95, noise); // グリッチの発生確率
+        float noise = hash(vec3(grid * 30.0, time * 0.5)); // より遅い時間変化
+        float glitchStr = step(0.98, noise); // グリッチの発生確率を下げる（0.95→0.98）
         
-        // RGB分離効果
-        float rOffset = sin(grid.x * 10.0 + time) * 0.02;
-        float gOffset = cos(grid.y * 10.0 - time) * 0.02;
-        float bOffset = sin((grid.x + grid.y) * 15.0 + time) * 0.02;
+        // RGB分離効果（強度を下げる）
+        float rOffset = sin(grid.x * 5.0 + time * 0.5) * 0.01; // 強度を半分に
+        float gOffset = cos(grid.y * 5.0 - time * 0.5) * 0.01;
+        float bOffset = sin((grid.x + grid.y) * 7.0 + time * 0.5) * 0.01;
         
         // カラーシフト
         vec3 glitchColor;
@@ -451,21 +451,21 @@ vec3 calcNormal(vec3 p) {
         glitchColor.g = color.g + gOffset * glitchStr;
         glitchColor.b = color.b + bOffset * glitchStr;
         
-        // ランダムなカラーノイズ
+        // ランダムなカラーノイズ（強度を下げる）
         vec3 randomColor = vec3(
-            hash(vec3(grid * 1.1, time)),
-            hash(vec3(grid * 2.2, time)),
-            hash(vec3(grid * 3.3, time))
+            hash(vec3(grid * 1.1, time * 0.5)),
+            hash(vec3(grid * 2.2, time * 0.5)),
+            hash(vec3(grid * 3.3, time * 0.5))
         );
         
-        // 時間に基づくグリッチラインの生成
-        float line = step(0.98, sin(grid.y * 100.0 + time * 5.0));
+        // 時間に基づくグリッチラインの生成（頻度を下げる）
+        float line = step(0.99, sin(grid.y * 50.0 + time * 2.0)); // 発生確率と速度を下げる
         
-        // 最終的なグリッチ効果の合成
+        // 最終的なグリッチ効果の合成（強度を下げる）
         return mix(
             glitchColor,
             randomColor,
-            (glitchStr * 0.5 + line * 0.3) * step(0.8, noise)
+            (glitchStr * 0.3 + line * 0.2) * step(0.9, noise)
         );
     }
     
