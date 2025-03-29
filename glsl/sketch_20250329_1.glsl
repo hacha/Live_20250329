@@ -433,9 +433,16 @@ vec3 calcNormal(vec3 p)
                     0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
                     0.5 + 0.5 * sin(iTime * 1.5 + PI)
                 );
-                // メタリックな光沢を追加
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
-                objColor = mix(objColor, vec3(1.0), fresnel * 0.7);
+                
+                // 鏡面反射効果の強化
+                vec3 reflectDir = reflect(rd, n);
+                vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
+                float specular = pow(max(dot(reflectDir, light), 0.0), 32.0); // 鏡面反射の強度
+                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 5.0); // フレネル効果を強化
+                
+                // メタリックな反射を強化
+                objColor = mix(objColor * 0.3, vec3(1.0), fresnel * 0.9);
+                objColor += vec3(1.0) * specular * 0.8; // 鏡面ハイライトを追加
             } else { // 未使用
                 objColor = vec3(1.0);
             }
