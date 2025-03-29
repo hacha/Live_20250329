@@ -399,12 +399,6 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // 距離と材質ID（最初は無効な値で初期化）
                         vec2 res = vec2(1e10, - 1.0);
                         
-                        // 回転する平面の距離を計算
-                        float planeDist = getRotatingPlaneDistance(p, iTime, 0);
-                        if (planeDist < res.x) {
-                            res = vec2(planeDist, 3.0); // マテリアルID 3.0を平面用に使用
-                        }
-                        
                         // 親キューブの位置と処理
                         vec3 cubePos = getFlyingCubePosition(iTime);
                         vec3 cubeSize = getConvulsiveScale(iTime); // 痙攣的な拡縮を適用
@@ -448,6 +442,18 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             if (childDist < res.x) {
                                 res = vec2(childDist, 4.1 + float(i) * 0.045);
                             }
+                        }
+                        
+                        // 回転する平面の距離を計算（カメラとキューブの間に入らないように）
+                        float planeDist = getRotatingPlaneDistance(p, iTime, 0);
+                        vec3 cameraPos = calculateCameraPosition(iTime, int(mod(iTime / 5.0, 4.0))); // 現在のカメラ位置
+                        vec3 toCube = normalize(cubePos - cameraPos);
+                        vec3 toPoint = normalize(p - cameraPos);
+                        float angleWithCube = dot(toCube, toPoint);
+                        
+                        // カメラとキューブの間にある場合は平面を表示しない
+                        if (planeDist < res.x && angleWithCube < 0.95) { // 0.95は約18度の視野角に相当
+                            res = vec2(planeDist, 3.0);
                         }
                         
                         return res;
