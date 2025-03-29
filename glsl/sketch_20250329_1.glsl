@@ -412,6 +412,39 @@ vec3 calcNormal(vec3 p) {
         return vec3(-10.0, 5.0, - 5.0); // 左前上から
     }
     
+    // トーンマッピング関数
+    vec3 toneMapping(vec3 color) {
+        // 露出調整
+        float exposure = 1.2;
+        color *= exposure;
+        
+        // ACESフィルムトーンマッピング
+        float a = 2.51;
+        float b = 0.03;
+        float c = 2.43;
+        float d = 0.59;
+        float e = 0.14;
+        return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+    }
+    
+    // カラーグレーディング
+    vec3 colorGrading(vec3 color) {
+        // コントラストの強化
+        float contrast = 1.2;
+        color = pow(color, vec3(contrast));
+        
+        // 彩度の調整
+        vec3 hsv = rgb2hsv(color);
+        hsv.y *= 1.3; // 彩度を30%増加
+        color = hsv2rgb(hsv);
+        
+        // 暖かみの追加
+        vec3 warmth = vec3(0.1, 0.05, 0.0);
+        color += warmth * (1.0 - color); // ハイライトへの影響を抑制
+        
+        return color;
+    }
+    
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
@@ -535,8 +568,16 @@ vec3 calcNormal(vec3 p) {
             col = navajoPattern(bgUV, iTime);
         }
         
+        // ガンマ補正の前にトーンマッピングとカラーグレーディングを適用
+        col = toneMapping(col);
+        col = colorGrading(col);
+        
         // ガンマ補正
         col = pow(col, vec3(0.6));
+        
+        // ビネット効果の追加
+        vec2 q = fragCoord / iResolution.xy;
+        col *= 0.5 + 0.5 * pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.1);
         
         // 出力
         fragColor = vec4(col, alpha);
