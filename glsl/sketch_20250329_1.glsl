@@ -72,8 +72,8 @@ float sdCubeGrid(vec3 p, vec3 totalSize) {
         return 1e10;
     }
     
-    // 小さなキューブの距離計算
-    float smallCubeDist = sdBox(localP, smallCubeSize * 0.8); // 80%のサイズで隙間を作る
+    // 小さなキューブの距離計算（サイズを半分に）
+    float smallCubeDist = sdBox(localP, smallCubeSize * 0.4); // 40%のサイズで隙間を大きく
     return smallCubeDist;
 }
 
