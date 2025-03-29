@@ -458,7 +458,7 @@ float noise(vec3 p) {
 // FBM（Fractional Brownian Motion）関数
 float fbm(vec3 p) {
     float f = 0.0;
-    float amp = 0.5;
+    float amp = 1.75;
     float freq = 1.0;
     
     // 時間による急激な変化の制御
@@ -488,13 +488,24 @@ vec2 mapObjects(vec3 p) {
     vec3 cubeSize = vec3(3.0);
     float cubeDist = sdBox(rotatedP, cubeSize);
     
-    // 時間による急激な変化を含むFBMディスプレイスメント
-    float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0); // 時折5倍速に
+    // チェッカーパターンの計算
+    float checkerScale = 2.0; // チェッカーの大きさ
+    vec3 checkerP = rotatedP * checkerScale;
+    float checker = step(0.0, sin(checkerP.x) * sin(checkerP.y)) *
+    step(0.0, sin(checkerP.y) * sin(checkerP.z)) *
+    step(0.0, sin(checkerP.z) * sin(checkerP.x));
+    
+    // FBMディスプレイスメントとチェッカーパターンの組み合わせ
+    float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0);
     float displacement = fbm(rotatedP * 1.5 + iTime * timeFactor) * 0.95;
+    displacement *= mix(0.8, 1.2, checker); // チェッカーパターンによってディスプレイスメントを変調
+    
     cubeDist -= displacement;
     
-    // 立方体のマテリアルIDを設定（5.0以上）
-    return vec2(cubeDist, 5.0);
+    // マテリアルIDをチェッカーパターンに基づいて変更（5.0または6.0）
+    float materialId = mix(5.0, 6.0, checker);
+    
+    return vec2(cubeDist, materialId);
 }
 
 // シーンの距離関数
@@ -761,6 +772,9 @@ vec3 calcNormal(vec3 p) {
             vec3 n = calcNormal(p);
             float material = getMaterial(p);
             
+            // チェッカーパターンに基づいて色を変更
+            vec3 baseColor = (material > 5.5) ? vec3(0.9, 0.9, 0.9) : vec3(0.2, 0.2, 0.2);
+            
             // 基本の光源方向
             vec3 baseLight = normalize(vec3(1.0, 0.50, - 1.0));
             float baseDiff = max(dot(n, baseLight), 0.0);
@@ -803,7 +817,7 @@ vec3 calcNormal(vec3 p) {
             
             // レイの方向に基づいて色を混ぜる
             float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
-            vec3 objColor = mix(color1, color2, mixFactor);
+            vec3 objColor = mix(color1, color2, mixFactor) * baseColor;
             
             // フレネル効果
             float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
