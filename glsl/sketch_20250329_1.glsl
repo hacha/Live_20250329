@@ -461,10 +461,18 @@ float fbm(vec3 p) {
     float amp = 0.5;
     float freq = 1.0;
     
+    // 時間による急激な変化の制御
+    float timeScale = 1.0 + step(0.7, sin(iTime * 0.5)) * 3.0; // 時折3倍速に
+    float ampScale = 1.0 + step(0.8, sin(iTime * 0.7)) * 2.0; // 時折振幅2倍に
+    
     for(int i = 0; i < 5; i ++ ) {
-        f += amp * noise(p * freq);
-        freq *= 2.0;
-        amp *= 0.5;
+        // 不規則な周波数変調
+        float freqMod = 1.0 + sin(iTime * freq * 0.3) * 0.5;
+        f += amp * noise(p * freq * freqMod * timeScale);
+        
+        // より急激な変化のための周波数とアンプの更新
+        freq *= 2.0 * (1.0 + sin(iTime * 0.2) * 0.3); // 周波数の変化を不規則に
+        amp *= 0.5 * ampScale;
     }
     
     return f;
@@ -480,8 +488,9 @@ vec2 mapObjects(vec3 p) {
     vec3 cubeSize = vec3(3.0);
     float cubeDist = sdBox(rotatedP, cubeSize);
     
-    // FBMによるディスプレイスメント（1.9倍に強化）
-    float displacement = fbm(rotatedP * 1.5 + iTime * 0.2) * 0.95; // 0.5 * 1.9 = 0.95
+    // 時間による急激な変化を含むFBMディスプレイスメント
+    float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0); // 時折5倍速に
+    float displacement = fbm(rotatedP * 1.5 + iTime * timeFactor) * 0.95;
     cubeDist -= displacement;
     
     // 立方体のマテリアルIDを設定（5.0以上）
