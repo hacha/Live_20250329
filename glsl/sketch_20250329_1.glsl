@@ -440,18 +440,6 @@ vec2 mapObjects(vec3 p) {
     // X座標の絶対値を取る
     p.x = abs(p.x);
     
-    // グリッドサイズの定義
-    vec3 gridSize = vec3(40.0, 40.0, 20.0); // 2x2x1のグリッドのセルサイズ
-    
-    // グリッドに基づいて位置を修正
-    vec3 cellIndex = floor((p + gridSize * 0.5) / gridSize);
-    vec3 localP = mod(p + gridSize * 0.5, gridSize) - gridSize * 0.5;
-    
-    // 2x2x1の範囲内のセルのみ処理
-    if (any(lessThan(cellIndex, vec3(0.0)))|| any(greaterThanEqual(cellIndex, vec3(2.0, 2.0, 1.0)))) {
-        return vec2(1e10, - 1.0);
-    }
-    
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
@@ -461,7 +449,7 @@ vec2 mapObjects(vec3 p) {
     float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0;
     
     // 親球体の回転
-    vec3 rotatedP = localP - spherePos;
+    vec3 rotatedP = p - spherePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
     // 親球体の距離計算
@@ -482,7 +470,7 @@ vec2 mapObjects(vec3 p) {
         float size = mix(maxSize, minSize, t);
         
         vec3 childPos = getChildCubePosition(spherePos, iTime, delay);
-        vec3 childRotatedP = localP - childPos;
+        vec3 childRotatedP = p - childPos;
         childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
         
         float childRadius = sphereRadius * size;
