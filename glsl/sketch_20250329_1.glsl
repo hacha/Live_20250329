@@ -451,8 +451,7 @@ vec2 mapObjects(vec3 p) {
 }
 
 // シーンの距離関数
-float map(vec3 p)
-{
+float map(vec3 p) {
     return mapObjects(p).x;
 }
 
@@ -592,7 +591,7 @@ float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
     float t = mint;
     float ph = 1e10; // 前回のh
     
-    for(int i = 0; i < 32; i ++ ) { // 64から32に削減
+    for(int i = 0; i < 32; i ++ ) {
         if (t > maxt)break;
         
         float h = map(ro + rd * t);
@@ -613,8 +612,7 @@ float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
 }
 
 // 法線を計算
-vec3 calcNormal(vec3 p)
-{
+vec3 calcNormal(vec3 p) {
     const float eps = 0.0001;
     const vec2 h = vec2(eps, 0);
     return normalize(vec3(
@@ -673,65 +671,8 @@ vec3 calcNormal(vec3 p)
         return vec3(x, height, z);
     }
     
-    void mainImage(out vec4 fragColor, in vec2 fragCoord)
-    {
+    void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
-        
-        // カメラの切り替え時間を対数スケールで設定
-        float baseTime = 5.0; // 基準時間
-        float logBase = 1.5; // 対数の底
-        float switchDuration = baseTime * log(1.0 + mod(iTime, 10.0)) / log(logBase);
-        float blendDuration = switchDuration * 0.2; // ブレンド時間は切り替え時間の20%
-        
-        // 現在のカメラIDを計算（4つのカメラでループ）
-        float logTime = log(1.0 + mod(iTime, 40.0)) / log(logBase); // より長いサイクルで対数時間を計算
-        float totalTime = mod(logTime * baseTime, switchDuration * 4.0);
-        int currentCam = int(totalTime / switchDuration);
-        int nextCam = (currentCam + 1)% 4;
-        
-        // ブレンド係数を計算（対数スケールを考慮）
-        float camTime = mod(totalTime, switchDuration);
-        float blend = smoothstep(switchDuration - blendDuration, switchDuration, camTime);
-        
-        // 2つのカメラ位置を計算
-        vec3 ro1 = calculateCameraPosition(iTime, currentCam);
-        vec3 ro2 = calculateCameraPosition(iTime, nextCam);
-        
-        // カメラ位置をブレンド
-        vec3 ro = mix(ro1, ro2, blend);
-        
-        // フォーカス対象の位置を取得
-        float focusTime = 3.0;
-        float focusIndex = floor(iTime / focusTime);
-        
-        // ハッシュ関数を使用してランダムな子球体のインデックスを生成（毎フレーム変化）
-        float randomChildIndex = floor(
-            mix(
-                hash(vec3(focusIndex)),
-                hash(vec3(focusIndex + 1.0)),
-                smoothstep(2.0, 2.8, mod(iTime, focusTime))// 切り替え前に次の子球体を選択
-            ) * 40.0
-        );
-        float childDelay = 0.15 * (randomChildIndex + 1.0);
-        
-        vec3 parentPos = getFlyingCubePosition(iTime);
-        vec3 childPos = getChildCubePosition(parentPos, iTime, childDelay);
-        vec3 target = mod(focusIndex, 2.0) < 1.0 ? parentPos : childPos;
-        
-        // 注視点にゆっくりとした揺れを追加
-        vec3 wobble = vec3(
-            sin(iTime * 0.3) * cos(iTime * 0.2),
-            sin(iTime * 0.25) * 0.5,
-            cos(iTime * 0.35) * sin(iTime * 0.15)
-        ) * 0.8; // 揺れの大きさを0.8に設定
-        
-        // 揺れを適用した注視点を使用
-        vec3 wobbledTarget = target + wobble;
-        
-        // カメラの向きを計算（揺れを含む）
-        vec3 forward = normalize(wobbledTarget - ro);
-        vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
-        vec3 up = cross(forward, right);
         
         // フィッシュアイレンズ効果の実装
         float baseStrength = 15.5;
@@ -750,6 +691,15 @@ vec3 calcNormal(vec3 p)
         float fishEyeStrength = baseStrength + rhythmEffect * 2.0;
         vec2 fishEyeUV = uv * (1.0 + fishEyeStrength * length(uv));
         
+        // カメラの設定
+        vec3 ro = vec3(0.0, 5.0, - 10.0); // カメラ位置
+        vec3 target = vec3(0.0); // 注視点
+        
+        // カメラの向きを計算
+        vec3 forward = normalize(target - ro);
+        vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
+        vec3 up = cross(forward, right);
+        
         // レイの方向を計算（フィッシュアイ効果を適用）
         vec3 rd = normalize(forward + right * fishEyeUV.x + up * fishEyeUV.y);
         
@@ -762,20 +712,13 @@ vec3 calcNormal(vec3 p)
         // 初期位置をニアクリップ位置に設定
         t = nearClip;
         
-        // 球体からの影響を蓄積
-        vec3 sphereInfluence = vec3(0.0);
-        float totalDensity = 0.0;
-        
-        // レイマーチングループの最適化
-        for(int i = 0; i < 64; i ++ ) { // 100から64に削減
+        // レイマーチングループ
+        for(int i = 0; i < 64; i ++ ) {
             vec3 p = ro + rd * t;
             float d = map(p);
             
-            // 球体からの影響を計算（簡略化）
             if (d < epsilon || t > tmax)break;
-            
-            // より大きなステップサイズを使用
-            t += d * 0.8; // より積極的なステップ
+            t += d * 0.8;
         }
         
         // 色を設定
@@ -788,212 +731,19 @@ vec3 calcNormal(vec3 p)
             vec3 n = calcNormal(p);
             float material = getMaterial(p);
             
-            // 1つ目のPointLightの位置と効果
-            vec3 lightPos1 = getPointLightPosition(iTime);
-            vec3 lightColor1 = vec3(1.0, 0.0, 0.0) * 2.5; // 純粋な赤色、より強く
-            float lightIntensity1 = 5.0;
-            
-            vec3 lightDir1 = normalize(lightPos1 - p);
-            float lightDistance1 = length(lightPos1 - p);
-            float attenuation1 = 1.0 / (1.0 + 0.1 * lightDistance1 + 0.01 * lightDistance1 * lightDistance1);
-            
-            // 2つ目のPointLight（高速バージョン）の位置と効果
-            vec3 lightPos2 = getSpeedyLightPosition(iTime);
-            vec3 lightColor2 = vec3(0.0, 0.0, 1.0) * 2.5; // 純粋な青色、より強く
-            float baseIntensity2 = 2.0; // 基本強度を弱めに
-            
-            // 高速な明滅効果（複数の周期を組み合わせる）
-            float strobe1 = sin(iTime * 8.0) * 0.5 + 0.5; // 8Hzの明滅
-            float strobe2 = sin(iTime * 12.0) * 0.5 + 0.5; // 12Hzの明滅
-            float strobe3 = sin(iTime * 15.0) * 0.5 + 0.5; // 15Hzの明滅
-            float strobeEffect = (strobe1 * 0.4 + strobe2 * 0.3 + strobe3 * 0.3) * 0.8 + 0.2; // 0.2-1.0の範囲
-            
-            float lightIntensity2 = baseIntensity2 * strobeEffect;
-            
-            vec3 lightDir2 = normalize(lightPos2 - p);
-            float lightDistance2 = length(lightPos2 - p);
-            float attenuation2 = 1.0 / (1.0 + 0.1 * lightDistance2 + 0.01 * lightDistance2 * lightDistance2);
-            
             // 基本の光源方向
             vec3 baseLight = normalize(vec3(1.0, 0.50, - 1.0));
             float baseDiff = max(dot(n, baseLight), 0.0);
             
-            // オブジェクトの色を設定
-            vec3 objColor;
-            if (material < 0.5) { // 地面
-                if (SHOW_GRID) {
-                    // グリッド描画関数を呼び出し
-                    vec4 gridResult = drawGrid(p, t);
-                    objColor = gridResult.rgb * 0.3; // グリッドを暗く
-                } else {
-                    objColor = vec3(0.0);
-                }
-            } else if (material >= 5.0) { // 立方体の場合
-                // 反射方向を計算
-                vec3 reflectDir = reflect(rd, n);
-                
-                // カラフルな背景パターン
-                float stripeWidth = 0.2;
-                float stripeFreq = 1.0 / stripeWidth;
-                float scrollSpeed = 5.0;
-                
-                // 波動効果のパラメータ
-                float waveFreq = 3.0;
-                float waveAmp = 0.3;
-                float waveSpeed = 2.0;
-                
-                // 波動関数（背景用）
-                float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
-                float wave2 = cos(rd.y * waveFreq * 1.3 + iTime * waveSpeed * 0.7) * waveAmp;
-                float wave3 = sin((rd.x + rd.y) * waveFreq * 0.8 - iTime * waveSpeed * 1.2) * waveAmp;
-                
-                // 波動効果の合成
-                vec2 waveOffset = vec2(wave1 + wave2, wave2 + wave3);
-                
-                // 変調パラメータ
-                float modulateFreq = 2.0;
-                float modulateAmp = 0.4;
-                float modulateSpeed = 1.5;
-                
-                // 変調効果
-                float modulation1 = sin(iTime * modulateSpeed + rd.x * modulateFreq) * modulateAmp;
-                float modulation2 = cos(iTime * modulateSpeed * 1.2 + rd.y * modulateFreq * 0.8) * modulateAmp;
-                
-                // スクロール方向に波動と変調を適用
-                vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed + waveOffset;
-                vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7 + waveOffset * 0.8;
-                
-                // レイ方向を波動と変調で歪ませる
-                vec2 distortedRay = rd.xy + waveOffset + vec2(modulation1, modulation2);
-                
-                // パターンの生成
-                float pattern1 = fract(dot(distortedRay + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
-                float pattern2 = fract(dot(distortedRay + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
-                
-                // 時間に基づく色相の変化（波動と変調の影響を加える）
-                float hue1 = pattern1 + iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
-                float hue2 = pattern2 - iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
-                
-                // HSVからRGBへの変換（1つ目のパターン）
-                vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
-                vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7, 0.25));
-                
-                // レイの方向に基づいて色を混ぜる
-                float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
-                objColor = mix(color1, color2, mixFactor);
-                
-                // 追加のカラーエフェクト
-                vec3 rainbowEffect = vec3(
-                    sin(rd.y * 3.0 + iTime) * 0.5 + 0.5,
-                    cos(rd.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
-                    sin((rd.x + rd.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
-                );
-                
-                // コントラストを1.4倍に調整
-                vec3 contrastAdjusted = (objColor - 0.5) * 1.4 + 0.5;
-                objColor = clamp(contrastAdjusted, 0.0, 1.0);
-                
-                // 最終的な色の合成
-                objColor = mix(objColor, rainbowEffect, 0.3);
-                
-                // フレネル効果を強調
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
-                objColor *= (0.8 + fresnel * 0.4); // フレネル効果で輝度を変化
-            } else if (material < 1.5) { // 球体
-                objColor = vec3(0.5); // 暗めの白色
-            } else if (material < 2.05) { // グリッドキューブ本体
-                // グリッドの位置に基づいて色を変化
-                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                objColor = getCubeColor(cellIndex, iTime) * 0.5; // 色を半分の明るさに
-                float blinkFactor = blink(cellIndex, iTime);
-                objColor *= blinkFactor;
-            } else if (material < 4.5) { // 親球体と子球体
-                // 基本色を設定
-                objColor = vec3(0.8, 0.2, 0.3); // 赤みがかった色
-                
-                // 材質IDに基づいて色を変化
-                float childIndex = (material - 4.1) / 0.045; // 0から19の値に変換
-                if (material > 4.0) {
-                    // 子球体の色をグラデーション
-                    float t = childIndex / 19.0; // 0から1の値に正規化
-                    objColor = mix(vec3(0.8, 0.2, 0.3), vec3(0.3, 0.2, 0.8), t);
-                }
-                
-                // 光沢効果を追加
-                vec3 n = calcNormal(p);
-                vec3 r = reflect(normalize(p - ro), n);
-                float spec = pow(max(0.0, r.y), 32.0);
-                
-                // フレネル効果（視線と法線の角度）を計算
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 0.50);
-                
-                // 虹色の生成
-                vec3 rainbow = vec3(
-                    sin(fresnel * 6.28) * 0.5 + 0.5, // 赤
-                    sin(fresnel * 6.28 + 2.09) * 0.5 + 0.5, // 緑
-                    sin(fresnel * 6.28 + 4.18) * 0.5 + 0.5 // 青
-                );
-                
-                // 縁に虹色を適用
-                objColor = mix(objColor, rainbow, fresnel * 4.8);
-                objColor += vec3(spec) * 0.5;
-            } else if (material < 3.5) { // 回転する平面
-                // 平面の色を時間とともに変化させる
-                objColor = vec3(
-                    0.5 + 0.5 * sin(iTime * 0.7),
-                    0.5 + 0.5 * sin(iTime * 0.9 + PI * 0.5),
-                    0.5 + 0.5 * sin(iTime * 1.1 + PI)
-                ) * 0.3; // 暗めに設定
-                
-                // 反射効果を追加（skyboxの代わりに暗い色を使用）
-                vec3 reflectDir = reflect(rd, n);
-                vec3 reflectCol = vec3(0.05); // 非常に暗い反射
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
-                objColor = mix(objColor, reflectCol, 0.5 + fresnel * 0.3);
-                
-                // 鏡面ハイライトを追加
-                float specular = pow(max(dot(reflectDir, baseLight), 0.0), 16.0);
-                objColor += vec3(0.3) * specular * 0.2;
-            } else { // 未使用
-                objColor = vec3(1.0);
-            }
-            
-            // 両方のPointLightからの寄与を計算
-            float pointDiff1 = max(dot(n, lightDir1), 0.0);
-            float pointDiff2 = max(dot(n, lightDir2), 0.0);
-            vec3 pointLightContribution =
-            lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 +
-            lightColor2 * pointDiff2 * attenuation2 * lightIntensity2;
-            
-            // 環境光+拡散光（暗めに）
-            if (material < 0.5) { // 地面
-                col = objColor * (0.5 + 0.3 * baseDiff + pointLightContribution);
-            } else {
-                col = objColor * (0.2 + 0.4 * baseDiff + pointLightContribution);
-            }
-            
-            // ソフトシャドウを計算
-            float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0); // パラメータを調整
-            
-            // ライティング計算（簡略化）
-            col = objColor * (0.2 + 0.4 * baseDiff);
-            col = col * mix(vec3(0.2), vec3(1.0), shadow);
-            
-            // ポイントライトの影響（簡略化）
-            col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * 0.5
-            + lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * 0.5;
-        } else {
-            // カラフルな背景パターン
-            float stripeWidth = 0.4;
-            float stripeFreq = 1.0 / stripeWidth;
-            float scrollSpeed = 5.0;
+            // 反射方向を計算
+            vec3 reflectDir = reflect(rd, n);
             
             // 波動効果のパラメータ
-            float waveFreq = 0.03;
-            float waveAmp = 0.63;
-            float waveSpeed = 1.0;
+            float waveFreq = 3.0;
+            float waveAmp = 0.3;
+            float waveSpeed = 2.0;
             
-            // 波動関数（背景用）
+            // 波動関数
             float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
             float wave2 = cos(rd.y * waveFreq * 1.3 + iTime * waveSpeed * 0.7) * waveAmp;
             float wave3 = sin((rd.x + rd.y) * waveFreq * 0.8 - iTime * waveSpeed * 1.2) * waveAmp;
@@ -1010,85 +760,39 @@ vec3 calcNormal(vec3 p)
             float modulation1 = sin(iTime * modulateSpeed + rd.x * modulateFreq) * modulateAmp;
             float modulation2 = cos(iTime * modulateSpeed * 1.2 + rd.y * modulateFreq * 0.8) * modulateAmp;
             
-            // スクロール方向に波動と変調を適用
-            vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed + waveOffset;
-            vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7 + waveOffset * 0.8;
-            
             // レイ方向を波動と変調で歪ませる
             vec2 distortedRay = rd.xy + waveOffset + vec2(modulation1, modulation2);
             
-            // パターンの生成
-            float pattern1 = fract(dot(distortedRay + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
-            float pattern2 = fract(dot(distortedRay + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
+            // 時間に基づく色相の変化
+            float hue1 = iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
+            float hue2 = -iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
             
-            // 時間に基づく色相の変化（波動と変調の影響を加える）
-            float hue1 = pattern1 + iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
-            float hue2 = pattern2 - iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
-            
-            // HSVからRGBへの変換（1つ目のパターン）
+            // HSVからRGBへの変換
             vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
             vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7, 0.25));
             
             // レイの方向に基づいて色を混ぜる
             float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
-            col = mix(color1, color2, mixFactor);
+            vec3 objColor = mix(color1, color2, mixFactor);
             
-            // 追加のカラーエフェクト
-            vec3 rainbowEffect = vec3(
-                sin(rd.y * 3.0 + iTime) * 0.5 + 0.5,
-                cos(rd.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
-                sin((rd.x + rd.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
-            );
+            // フレネル効果
+            float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
+            objColor *= (0.8 + fresnel * 0.4);
             
-            // 最終的な色の合成
-            col = mix(col, rainbowEffect, 0.3);
+            // ライティング計算
+            col = objColor * (0.2 + 0.4 * baseDiff);
+            
+            // ソフトシャドウ
+            float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0);
+            col = col * mix(vec3(0.2), vec3(1.0), shadow);
+        } else {
+            // 背景色
+            col = vec3(0.0);
         }
         
-        // 球体の影響を加算（弱めに）
-        if (t < tmax) {
-            col += sphereInfluence * 0.5;
-        }
-        
-        // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
-        if (SHOW_GRID) {
-            float tGrid = intersectGrid(ro, rd);
-            if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
-                // グリッドとの交差点
-                vec3 gridPos = ro + rd * tGrid;
-                
-                // グリッドの色を取得（カメラからの距離も渡す）
-                vec4 gridResult = drawGrid(gridPos, tGrid);
-                
-                // アルファブレンディング
-                if (gridResult.a > 0.001) {
-                    col = mix(col, gridResult.rgb, gridResult.a);
-                    alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
-                }
-            }
-            
-            // Y軸との交差を計算
-            float tYAxis = intersectYAxis(ro, rd);
-            if (tYAxis > 0.0 &&(t > tmax || tYAxis < t)) {
-                // Y軸との交差点
-                vec3 yAxisPos = ro + rd * tYAxis;
-                
-                // Y軸の高さに応じたフェードアウト
-                float yHeight = abs(yAxisPos.y);
-                float yFade = 1.0 - clamp(yHeight / 10.0, 0.0, 1.0);
-                
-                // Y軸の色（緑）
-                vec3 yAxisColor = vec3(0.0, 0.7, 0.0) * yFade;
-                float yAxisAlpha = 0.8 * yFade;
-                
-                // アルファブレンディング
-                col = mix(col, yAxisColor, yAxisAlpha);
-                alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
-            }
-        }
-        
-        // ガンマ補正（より暗く）
+        // ガンマ補正
         col = pow(col, vec3(0.6));
         
-        // Output to screen
+        // 出力
         fragColor = vec4(col, alpha);
     }
