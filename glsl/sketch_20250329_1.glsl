@@ -16,9 +16,9 @@ float hash(vec3 p) {
 float blink(vec3 cellIndex, float time) {
     float h = hash(cellIndex);
     // 8%の確率で点滅する
-    if (h > 0.92) {
+    if (h > 0.72) {
         // 点滅の速さと位相をランダムに
-        float blinkSpeed = 3.0 + h * 5.0;
+        float blinkSpeed = 4.0 + h * 12.0;
         float phase = h * 10.0;
         return step(0.5, sin(time * blinkSpeed + phase));
     }
@@ -55,19 +55,48 @@ vec2 mapObjects(vec3 p) {
     
     vec3 localP = q - spherePos;
     
-    // 球体の半径
+    // オブジェクトの種類を決定（20%の確率で三角錐）
+    float objectType = hash(cellIndex);
     float sphereRadius = 0.6;
-    float sphereDist = length(localP) - sphereRadius;
+    float pyramidHeight = 1.2;
+    float pyramidBase = 0.8;
+    float objDist;
+    
+    if (objectType < 0.2) {
+        // 三角錐の距離関数
+        vec3 pyramidP = localP;
+        pyramidP.y -= pyramidHeight * 0.5; // 中心を基準に配置
+        
+        // 三角錐の距離計算
+        vec3 a = normalize(vec3(0.0, pyramidHeight, 0.0));
+        vec3 b = normalize(vec3(pyramidBase, 0.0, 0.0));
+        vec3 c = normalize(vec3(0.0, 0.0, pyramidBase));
+        vec3 n = normalize(cross(b, c));
+        
+        objDist = max(
+            dot(pyramidP, n),
+            max(
+                dot(pyramidP, cross(a, b)),
+                max(
+                    dot(pyramidP, cross(b, c)),
+                    dot(pyramidP, cross(c, a))
+                )
+            )
+        );
+    } else {
+        // 球体の距離計算
+        objDist = length(localP) - sphereRadius;
+    }
     
     // 地面からの距離に応じたスムージング
     float groundDistance = spherePos.y;
-    float smoothRange = 1.2; // スムージングが始まる距離
+    float smoothRange = 1.2;
     float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-    sphereDist = mix(length(localP) - sphereRadius * 1.5, sphereDist, smoothFactor);
+    objDist = mix(length(localP) - (objectType < 0.2 ? pyramidBase : sphereRadius) * 1.5, objDist, smoothFactor);
     
-    // 球体の距離と材質IDを更新
-    if (sphereDist < res.x) {
-        res = vec2(sphereDist, 2.0);
+    // オブジェクトの距離と材質IDを更新
+    if (objDist < res.x) {
+        res = vec2(objDist, objectType < 0.2 ? 3.0 : 2.0); // 三角錐は材質ID 3.0
     }
     
     // 地面（平面）
@@ -364,8 +393,18 @@ vec3 calcNormal(vec3 p)
                     0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
                     0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
                 );
-                objColor = baseColor * vec3(0.6, 0.8, 1.0); // 色相の範囲を調整
-                // 点滅効果を適用
+                objColor = baseColor * vec3(0.6, 0.8, 1.0);
+                float blinkFactor = blink(cellIndex, iTime);
+                objColor *= blinkFactor;
+            } else if (material < 3.05) { // 三角錐
+                // グリッドの位置に基づいて色を変化（より鮮やかに）
+                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+                vec3 baseColor = vec3(
+                    0.6 + 0.4 * sin(cellIndex.x * 1.5),
+                    0.6 + 0.4 * sin(cellIndex.y * 1.7 + 2.0),
+                    0.6 + 0.4 * sin(cellIndex.z * 1.9 + 4.0)
+                );
+                objColor = baseColor * vec3(1.0, 0.9, 0.7); // より温かみのある色
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
             } else { // 未使用
