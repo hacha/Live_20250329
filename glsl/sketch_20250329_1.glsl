@@ -877,11 +877,19 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     // ソフトシャドウを計算（より強く）
                                     float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 32.0);
                                     
-                                    // 光源の強度と色（暗めに）
-                                    vec3 lightColor = vec3(0.6, 0.5, 0.4);
+                                    // 光源の強度と色を時間に応じて激しく変化
+                                    float strobeSpeed = 15.0; // 明滅の速さ
+                                    float strobeIntensity = abs(sin(iTime * strobeSpeed)) * 0.8 + 0.2; // 0.2から1.0の間で変化
                                     
-                                    // 影を適用（より暗く）
-                                    col = col * mix(vec3(0.1), lightColor, shadow);
+                                    // 光源の色も時間とともに変化（暗めのベース）
+                                    vec3 lightColor = vec3(
+                                        0.6 + 0.4 * sin(iTime * 7.3),
+                                        0.5 + 0.4 * sin(iTime * 8.1),
+                                        0.4 + 0.4 * sin(iTime * 6.7)
+                                    ) * strobeIntensity;
+                                    
+                                    // 影を適用（より暗く、明滅効果を含む）
+                                    col = col * mix(vec3(0.1), lightColor, shadow * strobeIntensity);
                                 } else {
                                     // 物体に当たらなかった場合はskyboxを表示（暗めに）
                                     col = getSkyboxPattern(rd, iTime) * 0.5;
