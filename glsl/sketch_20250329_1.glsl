@@ -690,8 +690,10 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
                                 
                                 // カメラの設定
-                                float camRadius = 17.0; // カメラの回転半径
-                                float camHeight = 4.2; // カメラの基本の高さを3.2から4.2に変更
+                                float baseRadius = 17.0; // 基本の回転半径
+                                float radiusVar = sin(iTime * 0.3) * baseRadius * 0.3; // 30%の変動
+                                float camRadius = baseRadius + radiusVar; // カメラの回転半径を変動させる
+                                float camHeight = 4.2; // カメラの基本の高さ
                                 float camSpeed = -0.2; // カメラの回転速度
                                 float camVerticalSpeed = 0.15; // カメラの上下運動の速度
                                 float camVerticalRange = 4.0; // カメラの上下運動の範囲
@@ -699,10 +701,10 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 // 注視点をキューブの位置に設定
                                 vec3 target = getFlyingCubePosition(iTime);
                                 
-                                // カメラの位置を計算（球体の周りを円を描いて回転）
+                                // カメラの位置を計算（球体の周りを円を描いて回転、半径が変動）
                                 vec3 ro = vec3(
                                     camRadius * cos(iTime * camSpeed),
-                                    max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)), // 最低高度を1.0に制限
+                                    max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)),
                                     camRadius * sin(iTime * camSpeed)
                                 );
                                 
