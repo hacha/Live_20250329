@@ -378,10 +378,13 @@ vec3 calcNormal(vec3 p) {
     
     // ナバホ族の幾何学模様を生成する関数
     vec3 navajoPattern(vec2 uv, float time) {
-        // スケールの調整
-        uv *= 4.0;
+        // スケールの調整（より細かいパターン）
+        uv *= 6.0;
         
-        // 時間による緩やかな移動
+        // 時間による緩やかな移動と回転
+        float rotation = time * 0.05;
+        mat2 rot = mat2(cos(rotation), - sin(rotation), sin(rotation), cos(rotation));
+        uv = rot * uv;
         uv.x += sin(time * 0.1) * 0.5;
         uv.y += cos(time * 0.08) * 0.5;
         
@@ -389,32 +392,53 @@ vec3 calcNormal(vec3 p) {
         vec2 id = floor(uv);
         vec2 gv = fract(uv) - 0.5;
         
-        // ダイヤモンドパターンの基本形
-        float diamond = abs(gv.x) + abs(gv.y);
-        
-        // ジグザグパターン
-        float zigzag = sin(uv.x * 3.0 + time * 0.2) * cos(uv.y * 3.0 + time * 0.15);
-        
-        // 階段パターン
-        float stairs = step(0.5, fract((uv.x + uv.y) * 2.0));
+        // 複数のパターンの生成
+        float diamond = abs(gv.x) + abs(gv.y); // ダイヤモンドパターン
+        float circle = length(gv); // 円形パターン
+        float zigzag = sin(uv.x * 4.0 + time * 0.2) * cos(uv.y * 4.0 + time * 0.15); // ジグザグ
+        float rays = abs(sin(atan(gv.y, gv.x) * 8.0)); // 放射状パターン
+        float squares = max(abs(gv.x), abs(gv.y)); // 正方形パターン
+        float stairs = step(0.5, fract((uv.x + uv.y) * 2.0)); // 階段パターン
         
         // パターンの組み合わせ
-        float pattern = mix(diamond, zigzag, 0.5) + stairs * 0.3;
+        float pattern1 = mix(diamond, circle, 0.5);
+        float pattern2 = mix(zigzag, rays, sin(time * 0.3) * 0.5 + 0.5);
+        float pattern3 = mix(squares, stairs, cos(time * 0.2) * 0.5 + 0.5);
+        
+        // 最終パターン
+        float finalPattern = mix(
+            mix(pattern1, pattern2, sin(time * 0.1) * 0.5 + 0.5),
+            pattern3,
+            cos(time * 0.15) * 0.5 + 0.5
+        );
         
         // ハッシュ関数を使用してランダムな変化を追加
         float h = hash(vec3(id, time * 0.1));
         
-        // 色の設定（ナバホ族の伝統的な色）
-        vec3 col1 = vec3(0.8, 0.4, 0.2); // テラコッタ
-        vec3 col2 = vec3(0.2, 0.1, 0.05); // ダークブラウン
-        vec3 col3 = vec3(0.9, 0.8, 0.6); // サンド
+        // 4色のカラーパレット（明るく鮮やかな色）
+        vec3 col1 = vec3(0.95, 0.4, 0.2); // オレンジレッド
+        vec3 col2 = vec3(0.2, 0.6, 0.9); // スカイブルー
+        vec3 col3 = vec3(0.9, 0.8, 0.2); // イエロー
+        vec3 col4 = vec3(0.4, 0.9, 0.4); // ライトグリーン
         
-        // パターンに基づいて色を混ぜる
-        vec3 finalColor = mix(col1, col2, pattern);
-        finalColor = mix(finalColor, col3, stairs * h);
+        // パターンと時間に基づいて色を選択
+        float colorSelect = finalPattern + time * 0.1;
+        vec3 color;
+        if (colorSelect < 1.0) {
+            color = mix(col1, col2, colorSelect);
+        } else if (colorSelect < 2.0) {
+            color = mix(col2, col3, colorSelect - 1.0);
+        } else if (colorSelect < 3.0) {
+            color = mix(col3, col4, colorSelect - 2.0);
+        } else {
+            color = mix(col4, col1, colorSelect - 3.0);
+        }
         
-        // 全体的な暗さの調整（背景として控えめに）
-        return finalColor * 0.15;
+        // パターンの強度に基づいて色を調整
+        color = mix(color * 0.5, color, finalPattern);
+        
+        // 全体的な明るさの調整（背景として控えめに）
+        return color * (0.2 + 0.1 * sin(time * 0.2));
     }
     
     // カメラポイントを取得する関数
