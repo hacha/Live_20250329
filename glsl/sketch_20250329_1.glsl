@@ -590,8 +590,8 @@ vec3 calcNormal(vec3 p) {
                 // 球体の色（金属的な光沢）
                 baseColor = vec3(0.8, 0.7, 0.5);
             } else {
-                // チェッカーパターンの色（白い部分をより発光させる）
-                baseColor = (material > 5.5) ? vec3(2.5, 2.5, 2.5) : vec3(0.2, 0.2, 0.2);
+                // チェッカーパターンの色（白い部分をさらに強く発光）
+                baseColor = (material > 5.5) ? vec3(4.0, 4.0, 4.0) : vec3(0.2, 0.2, 0.2);
             }
             
             // 基本の光源方向
@@ -601,12 +601,12 @@ vec3 calcNormal(vec3 p) {
             // 反射方向を計算
             vec3 reflectDir = reflect(rd, n);
             
-            // 波動効果のパラメータ
+            // 波動効果のパラメータ（白い部分の輝きを強調）
             float waveFreq = 3.0;
-            float waveAmp = 0.3;
-            float waveSpeed = 2.0;
+            float waveAmp = 0.5; // 波動の振幅を増加
+            float waveSpeed = 3.0; // 波動の速度を上げる
             
-            // 波動関数
+            // 波動関数（より強い変動）
             float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
             float wave2 = cos(rd.y * waveFreq * 1.3 + iTime * waveSpeed * 0.7) * waveAmp;
             float wave3 = sin((rd.x + rd.y) * waveFreq * 0.8 - iTime * waveSpeed * 1.2) * waveAmp;
@@ -614,10 +614,10 @@ vec3 calcNormal(vec3 p) {
             // 波動効果の合成
             vec2 waveOffset = vec2(wave1 + wave2, wave2 + wave3);
             
-            // 変調パラメータ
-            float modulateFreq = 2.0;
-            float modulateAmp = 0.4;
-            float modulateSpeed = 1.5;
+            // 変調パラメータ（より強い効果）
+            float modulateFreq = 2.5;
+            float modulateAmp = 0.6;
+            float modulateSpeed = 2.0;
             
             // 変調効果
             float modulation1 = sin(iTime * modulateSpeed + rd.x * modulateFreq) * modulateAmp;
@@ -626,22 +626,29 @@ vec3 calcNormal(vec3 p) {
             // レイ方向を波動と変調で歪ませる
             vec2 distortedRay = rd.xy + waveOffset + vec2(modulation1, modulation2);
             
-            // 時間に基づく色相の変化
-            float hue1 = iTime * 0.1 + wave1 * 0.2 + modulation1 * 0.3;
-            float hue2 = -iTime * 0.15 + wave2 * 0.2 + modulation2 * 0.3;
+            // 時間に基づく色相の変化（より鮮やかに）
+            float hue1 = iTime * 0.15 + wave1 * 0.3 + modulation1 * 0.4;
+            float hue2 = -iTime * 0.2 + wave2 * 0.3 + modulation2 * 0.4;
             
-            // HSVからRGBへの変換
-            vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
-            vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7, 0.25));
+            // HSVからRGBへの変換（より彩度と明度を上げる）
+            vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.9, 0.4));
+            vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.85, 0.35));
             
             // レイの方向に基づいて色を混ぜる
             float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
             vec3 objColor = mix(color1, color2, mixFactor) * baseColor;
             
-            // フレネル効果の強化（球体とチェッカーの白い部分）
-            float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), material > 6.5 ? 5.0 : 3.0);
+            // フレネル効果の強化（白い部分をより強く光らせる）
+            float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), material > 6.5 ? 5.0 : 2.5);
             objColor *= material > 6.5 ? (0.6 + fresnel * 0.8) :
-            (material > 5.5 ? (1.2 + fresnel * 0.8) : (0.8 + fresnel * 0.4));
+            (material > 5.5 ? (2.0 + fresnel * 1.5) : (0.8 + fresnel * 0.4));
+            
+            // 追加の輝き効果（白い部分のみ）
+            if (material > 5.5 && material < 6.5) {
+                float glow = pow(fresnel, 1.5) * 2.0;
+                float pulse = sin(iTime * 3.0) * 0.5 + 0.5;
+                objColor += vec3(1.0, 0.9, 0.8) * glow * pulse;
+            }
             
             // ライティング計算
             col = objColor * (0.2 + 0.4 * baseDiff);
