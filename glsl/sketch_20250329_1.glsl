@@ -580,7 +580,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             // 改善されたペナンブラ計算
                             float y = h*h / (2.0 * ph);
                             float d = sqrt(h * h-y * y);
-                            res = min(res, k * d /max(0.0, t - y));
+                            res = min(res, k * d / max(0.0, t - y));
                             ph = h;
                             
                             t += h * 0.5; // ステップサイズを調整
@@ -1018,4 +1018,3 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 // Output to screen
                                 fragColor = vec4(col, alpha);
                             }
-                        }
