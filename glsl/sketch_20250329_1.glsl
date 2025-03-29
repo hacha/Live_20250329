@@ -262,9 +262,9 @@ vec3 calcNormal(vec3 p)
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
         // カメラの設定
-        float camRadius = 7.0; // カメラの回転半径
-        float camHeight = 3.0; // カメラの高さ
-        float camSpeed = -1.3; // カメラの回転速度
+        float camRadius = 17.0; // カメラの回転半径
+        float camHeight = 3.2; // カメラの高さ
+        float camSpeed = -0.3; // カメラの回転速度
         
         // カメラの位置を計算（キューブの周りを円を描いて回転）
         vec3 ro = vec3(
@@ -324,12 +324,25 @@ vec3 calcNormal(vec3 p)
             } else if (material < 1.5) { // 球体
                 objColor = vec3(1.0, 1.0, 1.0); // 白色
             } else if (material < 2.05) { // キューブ本体
-                objColor = vec3(0.3, 0.6, 1.0); // 青みがかった色
+                // グリッドの位置に基づいて色を変化
+                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+                vec3 baseColor = vec3(
+                    0.5 + 0.5 * sin(cellIndex.x * 1.5),
+                    0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
+                    0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
+                );
+                objColor = baseColor * vec3(0.6, 0.8, 1.0); // 色相の範囲を調整
             } else { // 棘の部分
                 // 時間とともに脈動する発光色
                 float glow = 0.5 + 0.5 * sin(iTime * 2.0);
-                // より強い発光色（HDR値を使用）
-                objColor = vec3(1.0, 0.3, 0.1) * (2.0 + glow * 5.0); // 赤みがかった強い発光色
+                // グリッドの位置に基づいて発光色を変化
+                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+                vec3 baseGlow = vec3(
+                    0.8 + 0.2 * sin(cellIndex.x * 1.5),
+                    0.3 + 0.2 * sin(cellIndex.y * 1.7 + 2.0),
+                    0.2 + 0.2 * sin(cellIndex.z * 1.9 + 4.0)
+                );
+                objColor = baseGlow * (2.0 + glow * 5.0); // 発光色を変化させつつ強度を保持
             }
             
             // 単純な拡散照明
@@ -347,7 +360,14 @@ vec3 calcNormal(vec3 p)
                     
                     // bloom効果の追加
                     float bloomIntensity = 2.0 + sin(iTime * 2.0);
-                    vec3 bloomColor = vec3(1.0, 0.5, 0.2) * bloomIntensity;
+                    // グリッドの位置に基づいてbloomの色も変化
+                    vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+                    vec3 baseBloom = vec3(
+                        1.0 + 0.2 * sin(cellIndex.x * 1.5),
+                        0.5 + 0.2 * sin(cellIndex.y * 1.7 + 2.0),
+                        0.2 + 0.2 * sin(cellIndex.z * 1.9 + 4.0)
+                    );
+                    vec3 bloomColor = baseBloom * bloomIntensity;
                     col += bloomColor * smoothstep(0.0, 1.0, length(objColor));
                 } else {
                     col = objColor * (0.3 + 0.7 * diff);
