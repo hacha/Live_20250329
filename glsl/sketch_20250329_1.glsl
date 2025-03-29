@@ -674,23 +674,6 @@ vec3 calcNormal(vec3 p) {
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
-        // フィッシュアイレンズ効果の実装
-        float baseStrength = 15.5;
-        float bpm = 125.0 / 4.0;
-        float fourOnFloor = (bpm / 60.0) * 4.0; // 120BPMの4つ打ち = 8Hz
-        
-        // キックドラムのような強いアクセント
-        float kick = step(0.0, sin(iTime * PI * fourOnFloor)) * 10.8;
-        
-        // よりスムーズなサイドチェーンエフェクト
-        float sidechain = pow(abs(sin(iTime * PI * fourOnFloor)), 0.3) * 0.5;
-        
-        // リズミカルな効果の合成
-        float rhythmEffect = kick + sidechain;
-        
-        float fishEyeStrength = baseStrength + rhythmEffect * 2.0;
-        vec2 fishEyeUV = uv * (1.0 + fishEyeStrength * length(uv));
-        
         // カメラの設定
         vec3 ro = vec3(0.0, 5.0, - 10.0); // カメラ位置
         vec3 target = vec3(0.0); // 注視点
@@ -700,8 +683,8 @@ vec3 calcNormal(vec3 p) {
         vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
         vec3 up = cross(forward, right);
         
-        // レイの方向を計算（フィッシュアイ効果を適用）
-        vec3 rd = normalize(forward + right * fishEyeUV.x + up * fishEyeUV.y);
+        // レイの方向を計算
+        vec3 rd = normalize(forward + right * uv.x + up * uv.y);
         
         // レイマーチング
         float t = 0.0;
