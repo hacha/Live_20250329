@@ -59,6 +59,12 @@ vec2 mapObjects(vec3 p) {
     float sphereRadius = 0.6;
     float sphereDist = length(localP) - sphereRadius;
     
+    // 地面からの距離に応じたスムージング
+    float groundDistance = spherePos.y;
+    float smoothRange = 1.2; // スムージングが始まる距離
+    float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
+    sphereDist = mix(length(localP) - sphereRadius * 1.5, sphereDist, smoothFactor);
+    
     // 球体の距離と材質IDを更新
     if (sphereDist < res.x) {
         res = vec2(sphereDist, 2.0);
