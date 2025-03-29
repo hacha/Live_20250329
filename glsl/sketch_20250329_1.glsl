@@ -39,41 +39,29 @@ vec2 mapObjects(vec3 p) {
     vec2 res = vec2(1e10, - 1.0);
     
     // レペテーションの設定
-    float spacing = 6.0; // キューブ間の距離
+    float spacing = 6.0; // 球体間の距離
     vec3 repetition = vec3(spacing);
     vec3 q = mod(p + 0.5 * repetition, repetition) - 0.5 * repetition;
     
     // オリジナルの位置を保存（マテリアルIDの変更に使用）
     vec3 cellIndex = floor((p + 0.5 * repetition) / repetition);
     
-    // 回転するキューブの位置と回転
-    vec3 cubePos = vec3(0.0, 1.0, 0.0);
-    vec3 localP = q - cubePos;
+    // 球体の位置
+    vec3 spherePos = vec3(0.0, 1.0, 0.0);
+    vec3 localP = q - spherePos;
     
-    // キューブの回転
-    float rotSpeed = 1.0;
-    float c = cos(iTime * rotSpeed);
-    float s = sin(iTime * rotSpeed);
-    mat3 rotY = mat3(
-        c, 0.0, s,
-        0.0, 1.0, 0.0,
-        - s, 0.0, c
-    );
-    localP = rotY * localP;
-    
-    // キューブのサイズ
-    vec3 cubeSize = vec3(1.0);
-    vec3 d = abs(localP) - cubeSize;
-    float cubeDist = length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+    // 球体の半径
+    float sphereRadius = 1.0;
+    float sphereDist = length(localP) - sphereRadius;
     
     // 棘の生成
     float spikeLength = 1.0;
     float spikeCount = 8.0;
-    // 各キューブで位相をずらす
+    // 各球体で位相をずらす
     float timeOffset = dot(cellIndex, vec3(1.2, 1.4, 1.6));
     float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0 + timeOffset); // パルスアニメーション
     
-    // 正規化された位置ベクトル
+    // 正規化された位置ベクトル（すでに球体の中心からの方向）
     vec3 nq = normalize(localP);
     
     // 棘のパターンを生成
@@ -82,16 +70,16 @@ vec2 mapObjects(vec3 p) {
     spike += sin(nq.x * freq + iTime + timeOffset) * cos(nq.y * freq + iTime + timeOffset) * sin(nq.z * freq);
     spike = pow(abs(spike), 2.0) * spikeLength * spikePulse;
     
-    // キューブの表面からの距離に基づいて棘を適用
-    float surfaceDist = abs(cubeDist);
+    // 球体の表面からの距離に基づいて棘を適用
+    float surfaceDist = abs(sphereDist);
     float spikeMask = smoothstep(0.0, 0.3, surfaceDist);
-    float spikedCubeDist = cubeDist - spike * (1.0 - spikeMask);
+    float spikedSphereDist = sphereDist - spike * (1.0 - spikeMask);
     
-    // キューブと棘の距離と材質IDを更新
-    if (spikedCubeDist < res.x) {
+    // 球体と棘の距離と材質IDを更新
+    if (spikedSphereDist < res.x) {
         // 棘の部分は異なるマテリアルID（2.1）を割り当てる
         float spikeMaterial = mix(2.1, 2.0, spikeMask);
-        res = vec2(spikedCubeDist, spikeMaterial);
+        res = vec2(spikedSphereDist, spikeMaterial);
     }
     
     // 地面（平面）
@@ -286,14 +274,14 @@ vec3 calcNormal(vec3 p)
         float camHeight = 3.2; // カメラの高さ
         float camSpeed = -0.3; // カメラの回転速度
         
-        // カメラの位置を計算（キューブの周りを円を描いて回転）
+        // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
             camRadius * cos(iTime * camSpeed),
             camHeight + 1.0 * sin(iTime * camSpeed * 0.5), // 上下にも少し動く
             camRadius * sin(iTime * camSpeed)
         );
         
-        // 注視点（キューブの位置）
+        // 注視点（球体の位置）
         vec3 target = vec3(0.0, 1.0, 0.0);
         
         // カメラの向きを計算
@@ -343,7 +331,7 @@ vec3 calcNormal(vec3 p)
                 }
             } else if (material < 1.5) { // 球体
                 objColor = vec3(1.0, 1.0, 1.0); // 白色
-            } else if (material < 2.05) { // キューブ本体
+            } else if (material < 2.05) { // 球体本体
                 // グリッドの位置に基づいて色を変化
                 vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
                 vec3 baseColor = vec3(
