@@ -328,7 +328,8 @@ vec3 calcNormal(vec3 p)
             } else { // 棘の部分
                 // 時間とともに脈動する発光色
                 float glow = 0.5 + 0.5 * sin(iTime * 2.0);
-                objColor = vec3(1.0, 0.3, 0.1) * (1.0 + glow * 2.0); // 赤みがかった発光色
+                // より強い発光色（HDR値を使用）
+                objColor = vec3(1.0, 0.3, 0.1) * (2.0 + glow * 5.0); // 赤みがかった強い発光色
             }
             
             // 単純な拡散照明
@@ -339,7 +340,18 @@ vec3 calcNormal(vec3 p)
             if (material < 0.5) { // 地面の場合はグリッドラインを強調するため拡散を抑える
                 col = objColor * (0.9 + 0.1 * diff);
             } else {
-                col = objColor * (0.3 + 0.7 * diff);
+                // 棘の部分は発光を強調
+                if (material > 2.05) {
+                    // 発光部分はライティングの影響を減らし、自己発光を強調
+                    col = objColor * (0.8 + 0.2 * diff);
+                    
+                    // bloom効果の追加
+                    float bloomIntensity = 2.0 + sin(iTime * 2.0);
+                    vec3 bloomColor = vec3(1.0, 0.5, 0.2) * bloomIntensity;
+                    col += bloomColor * smoothstep(0.0, 1.0, length(objColor));
+                } else {
+                    col = objColor * (0.3 + 0.7 * diff);
+                }
             }
             
             // ソフトシャドウを計算
@@ -349,7 +361,11 @@ vec3 calcNormal(vec3 p)
             vec3 lightColor = vec3(1.0, 0.9, 0.8);
             
             // 影を適用（ソフトシャドウ）
-            col = col * mix(vec3(0.2), lightColor, shadow);
+            if (material > 2.05) {
+                col = col * mix(vec3(0.6), lightColor, shadow);
+            } else {
+                col = col * mix(vec3(0.2), lightColor, shadow);
+            }
         }
         
         // 透明なグリッドを描画
