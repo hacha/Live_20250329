@@ -863,6 +863,19 @@ vec3 calcNormal(vec3 p)
                 vec3 n = calcNormal(p);
                 vec3 r = reflect(normalize(p - ro), n);
                 float spec = pow(max(0.0, r.y), 32.0);
+                
+                // フレネル効果（視線と法線の角度）を計算
+                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
+                
+                // 虹色の生成
+                vec3 rainbow = vec3(
+                    sin(fresnel * 6.28) * 0.5 + 0.5, // 赤
+                    sin(fresnel * 6.28 + 2.09) * 0.5 + 0.5, // 緑
+                    sin(fresnel * 6.28 + 4.18) * 0.5 + 0.5 // 青
+                );
+                
+                // 縁に虹色を適用
+                objColor = mix(objColor, rainbow, fresnel * 0.8);
                 objColor += vec3(spec) * 0.5;
             } else if (material < 3.5) { // 回転する平面
                 // 平面の色を時間とともに変化させる
