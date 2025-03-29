@@ -755,15 +755,19 @@ vec3 calcNormal(vec3 p)
         
         // フィッシュアイレンズ効果の実装
         float baseStrength = 15.5;
-        float rhythmSpeed = 14.0; // リズムの速さ
-        float rhythmRange = 2.0; // 変化の幅
+        float bpm = 120.0;
+        float fourOnFloor = (bpm / 60.0) * 4.0; // 120BPMの4つ打ち = 8Hz
         
-        // 複数の周波数を組み合わせてリズミカルな動きを作成
-        float rhythm1 = sin(iTime * rhythmSpeed) * 0.5;
-        float rhythm2 = sin(iTime * rhythmSpeed * 1.5 + 1.57) * 0.3;
-        float rhythm3 = sin(iTime * rhythmSpeed * 0.7 - 0.5) * 0.2;
+        // キックドラムのような強いアクセント
+        float kick = step(0.0, sin(iTime * PI * fourOnFloor)) * 0.8;
         
-        float fishEyeStrength = baseStrength + (rhythm1 + rhythm2 + rhythm3) * rhythmRange;
+        // よりスムーズなサイドチェーンエフェクト
+        float sidechain = pow(abs(sin(iTime * PI * fourOnFloor)), 0.3) * 0.5;
+        
+        // リズミカルな効果の合成
+        float rhythmEffect = kick + sidechain;
+        
+        float fishEyeStrength = baseStrength + rhythmEffect * 2.0;
         vec2 fishEyeUV = uv * (1.0 + fishEyeStrength * length(uv));
         
         // レイの方向を計算（フィッシュアイ効果を適用）
