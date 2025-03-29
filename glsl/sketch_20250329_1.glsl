@@ -27,11 +27,17 @@ float blink(vec3 cellIndex, float time) {
 
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
-    // 基本的な動きを計算
+    // 極座標のパラメータ
+    float radius = 5.0; // 回転半径
+    float theta = time * 0.7; // 水平面での角度
+    float phi = time * 0.5; // 垂直方向の角度
+    float height = 5.0; // 基準となる高さ
+    
+    // 極座標から直交座標への変換
     vec3 basePos = vec3(
-        5.0 * sin(time * 0.7),
-        5.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
-        5.0 * sin(time * 0.9 + PI * 0.25)
+        radius * cos(theta), // x座標
+        height + 2.0 * sin(phi + PI * 0.5), // y座標
+        radius * sin(theta)// z座標
     );
     
     return basePos;
