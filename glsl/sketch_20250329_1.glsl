@@ -361,8 +361,14 @@ vec3 calculateCameraPosition(float time, int cameraId) {
     float focusIndex = floor(time / focusTime);
     float focusPhase = fract(time / focusTime);
     
-    // ハッシュ関数を使用してランダムな子球体のインデックスを生成
-    float randomChildIndex = floor(hash(vec3(focusIndex)) * 20.0); // 0-19の範囲
+    // ハッシュ関数を使用してランダムな子球体のインデックスを生成（毎フレーム変化）
+    float randomChildIndex = floor(
+        mix(
+            hash(vec3(focusIndex)),
+            hash(vec3(focusIndex + 1.0)),
+            smoothstep(2.0, 2.8, mod(time, focusTime))// 切り替え前に次の子球体を選択
+        ) * 20.0
+    );
     float childDelay = 0.15 * (randomChildIndex + 1.0);
     
     // フォーカス対象を決定（偶数回は親、奇数回はランダムな子）
@@ -771,7 +777,15 @@ vec3 calcNormal(vec3 p)
         // フォーカス対象の位置を取得
         float focusTime = 3.0;
         float focusIndex = floor(iTime / focusTime);
-        float randomChildIndex = floor(hash(vec3(focusIndex)) * 20.0);
+        
+        // ハッシュ関数を使用してランダムな子球体のインデックスを生成（毎フレーム変化）
+        float randomChildIndex = floor(
+            mix(
+                hash(vec3(focusIndex)),
+                hash(vec3(focusIndex + 1.0)),
+                smoothstep(2.0, 2.8, mod(iTime, focusTime))// 切り替え前に次の子球体を選択
+            ) * 20.0
+        );
         float childDelay = 0.15 * (randomChildIndex + 1.0);
         
         vec3 parentPos = getFlyingCubePosition(iTime);
