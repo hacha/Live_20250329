@@ -747,29 +747,78 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 return vec3(x, height, z);
                             }
                             
+                            // カメラの設定を計算する関数
+                            vec3 calculateCameraPosition(float time, int cameraId) {
+                                float baseRadius = 17.0; // 基本の回転半径
+                                
+                                if (cameraId == 0) {
+                                    // カメラ0: ダイナミックな円運動（より大きな半径と高さ変化）
+                                    float radius = baseRadius * 1.2;
+                                    float height = 6.0 + sin(time * 0.4) * 4.0;
+                                    return vec3(
+                                        radius * cos(time * -0.3),
+                                        height,
+                                        radius * sin(time * -0.3)
+                                    );
+                                }
+                                else if (cameraId == 1) {
+                                    // カメラ1: 高速スパイラル運動（より複雑な軌道）
+                                    float t = time * 0.8;
+                                    float spiralRadius = baseRadius * (0.7 + 0.3 * sin(t * 0.5));
+                                    float heightOffset = 20.0 + sin(t * 0.7) * 8.0;
+                                    return vec3(
+                                        spiralRadius * cos(t),
+                                        heightOffset,
+                                        spiralRadius * sin(t * 1.3)// 非対称な動き
+                                    );
+                                }
+                                else if (cameraId == 2) {
+                                    // カメラ2: 低い位置からの8の字運動（より極端な視点）
+                                    float t = time * 0.4;
+                                    return vec3(
+                                        baseRadius * 0.8 * sin(t),
+                                        max(3.0, 4.0 + sin(time * 0.6) * 2.0),
+                                        baseRadius * 0.6 * sin(t * 2.0)
+                                    );
+                                }
+                                else {
+                                    // カメラ3: カオティックな軌道（より予測不可能な動き）
+                                    float t = time * 0.5;
+                                    float chaosRadius = baseRadius * (1.0 + 0.4 * sin(t * 1.7));
+                                    return vec3(
+                                        chaosRadius * sin(t) * cos(t * 0.7),
+                                        max(5.0, 12.0 + cos(t * 0.9) * 6.0),
+                                        chaosRadius * cos(t) * sin(t * 0.6)
+                                    );
+                                }
+                            }
+                            
                             void mainImage(out vec4 fragColor, in vec2 fragCoord)
                             {
-                                // Normalized pixel coordinates (from 0 to 1)
                                 vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
                                 
-                                // カメラの設定
-                                float baseRadius = 17.0; // 基本の回転半径
-                                float radiusVar = sin(iTime * 0.3) * baseRadius * 0.3; // 30%の変動
-                                float camRadius = baseRadius + radiusVar; // カメラの回転半径を変動させる
-                                float camHeight = 4.2; // カメラの基本の高さ
-                                float camSpeed = -0.2; // カメラの回転速度
-                                float camVerticalSpeed = 0.15; // カメラの上下運動の速度
-                                float camVerticalRange = 4.0; // カメラの上下運動の範囲
+                                // カメラの切り替え時間を設定
+                                float switchDuration = 5.0; // 各カメラの持続時間
+                                float blendDuration = 1.0; // ブレンド時間
+                                
+                                // 現在のカメラIDを計算
+                                float totalTime = mod(iTime, switchDuration * 4.0); // 4つのカメラでループ
+                                int currentCam = int(totalTime / switchDuration);
+                                int nextCam = (currentCam + 1)% 4;
+                                
+                                // ブレンド係数を計算
+                                float camTime = mod(totalTime, switchDuration);
+                                float blend = smoothstep(switchDuration - blendDuration, switchDuration, camTime);
+                                
+                                // 2つのカメラ位置を計算
+                                vec3 ro1 = calculateCameraPosition(iTime, currentCam);
+                                vec3 ro2 = calculateCameraPosition(iTime, nextCam);
+                                
+                                // カメラ位置をブレンド
+                                vec3 ro = mix(ro1, ro2, blend);
                                 
                                 // 注視点をキューブの位置に設定
                                 vec3 target = getFlyingCubePosition(iTime);
-                                
-                                // カメラの位置を計算（球体の周りを円を描いて回転、半径が変動）
-                                vec3 ro = vec3(
-                                    camRadius * cos(iTime * camSpeed),
-                                    max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)),
-                                    camRadius * sin(iTime * camSpeed)
-                                );
                                 
                                 // カメラの向きを計算
                                 vec3 forward = normalize(target - ro);
