@@ -18,19 +18,17 @@ vec2 mapObjects(vec3 p) {
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
-    // 時間に基づく球体の軌道の計算
-    float orbitRadius = 3.0;
-    float orbitHeight = 1.0;
-    float orbitSpeed = 0.5;
-    vec3 spherePos = vec3(
-        orbitRadius * cos(iTime * orbitSpeed),
-        orbitHeight * sin(iTime * orbitSpeed * 0.7) + 1.0,
-        orbitRadius * sin(iTime * orbitSpeed)
-    );
+    // レペテーションの設定
+    float spacing = 6.0; // キューブ間の距離
+    vec3 repetition = vec3(spacing);
+    vec3 q = mod(p + 0.5 * repetition, repetition) - 0.5 * repetition;
+    
+    // オリジナルの位置を保存（マテリアルIDの変更に使用）
+    vec3 cellIndex = floor((p + 0.5 * repetition) / repetition);
     
     // 回転するキューブの位置と回転
     vec3 cubePos = vec3(0.0, 1.0, 0.0);
-    vec3 q = p - cubePos;
+    vec3 localP = q - cubePos;
     
     // キューブの回転
     float rotSpeed = 1.0;
@@ -41,25 +39,27 @@ vec2 mapObjects(vec3 p) {
         0.0, 1.0, 0.0,
         - s, 0.0, c
     );
-    q = rotY * q;
+    localP = rotY * localP;
     
     // キューブのサイズ
     vec3 cubeSize = vec3(1.0);
-    vec3 d = abs(q) - cubeSize;
+    vec3 d = abs(localP) - cubeSize;
     float cubeDist = length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
     
     // 棘の生成
     float spikeLength = 1.0;
     float spikeCount = 8.0;
-    float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0); // パルスアニメーション
+    // 各キューブで位相をずらす
+    float timeOffset = dot(cellIndex, vec3(1.2, 1.4, 1.6));
+    float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0 + timeOffset); // パルスアニメーション
     
     // 正規化された位置ベクトル
-    vec3 nq = normalize(q);
+    vec3 nq = normalize(localP);
     
     // 棘のパターンを生成
     float spike = 0.0;
     float freq = 8.0;
-    spike += sin(nq.x * freq + iTime) * cos(nq.y * freq + iTime) * sin(nq.z * freq);
+    spike += sin(nq.x * freq + iTime + timeOffset) * cos(nq.y * freq + iTime + timeOffset) * sin(nq.z * freq);
     spike = pow(abs(spike), 2.0) * spikeLength * spikePulse;
     
     // キューブの表面からの距離に基づいて棘を適用
