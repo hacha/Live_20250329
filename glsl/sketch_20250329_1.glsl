@@ -285,26 +285,33 @@ vec3 getCubeColor(vec3 cellIndex, float time) {
     return hsv2rgb(hsv);
 }
 
-// 子キューブの位置を計算する関数
+// 子球体の位置を計算する関数
 vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
     // 親の位置から少し遅れて追従
     float delayedTime = time - delay;
     vec3 basePos = getFlyingCubePosition(delayedTime);
     
-    // 親の位置と子の位置の差分を計算
-    vec3 diff = basePos - parentPos;
-    
     // フレーム内での相対位置（0.0から1.0）
-    float framePosition = delay / (0.15 * 20.0); // 20は子キューブの総数
+    float framePosition = delay / (0.15 * 20.0); // 20は子球体の総数
     
-    // 距離の伸縮を計算
-    float baseStretch = 3.0; // 基本の伸縮範囲
-    float stretchPhase = time * 2.0; // 伸縮の周期
+    // インデックスが深いほど、より大きな周回半径と遅い速度
+    float orbitRadius = mix(5.0, 25.0, framePosition); // 半径を5から25に徐々に大きく
+    float orbitSpeed = mix(0.8, 0.2, framePosition); // 速度を0.8から0.2に徐々に遅く
     
-    // サインウェーブで伸縮（0.3から3.0の範囲）
-    float stretchFactor = mix(0.3, 3.0, (sin(stretchPhase + framePosition * PI * 2.0) * 0.5 + 0.5));
+    // 周回運動の計算
+    float angle = delayedTime * orbitSpeed;
+    vec3 orbit = vec3(
+        cos(angle) * orbitRadius,
+        sin(angle * 0.5) * orbitRadius * 0.3, // 高さの変化は控えめに
+        sin(angle) * orbitRadius
+    );
     
-    return parentPos + diff * stretchFactor;
+    // 親の位置を中心とした周回運動
+    vec3 orbitPos = parentPos + orbit;
+    
+    // 親の位置と周回位置をブレンド
+    float followStrength = mix(0.8, 0.2, framePosition); // 追従の強さを徐々に弱く
+    return mix(orbitPos, basePos, followStrength);
 }
 
 // キューブの痙攣的な拡縮を計算する関数
