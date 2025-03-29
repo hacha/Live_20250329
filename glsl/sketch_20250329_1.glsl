@@ -34,18 +34,9 @@ vec3 getFlyingCubePosition(float time) {
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
     
-    // 胸像のようなカレイドスコープ効果（Y軸は保持）
-    float kaleidRange = 8.0;
-    vec2 xzPos = vec2(basePos.x, basePos.z);
-    float dist = length(xzPos);
-    if (dist > kaleidRange) {
-        float angle = atan(xzPos.y, xzPos.x);
-        float r = 2.0 * kaleidRange - dist;
-        xzPos = r * vec2(cos(angle), sin(angle));
-    }
-    basePos.xz = xzPos;
-    
-    // XZ平面でのフォールディングは削除
+    // X軸とZ軸での鏡像反転
+    basePos.x = abs(basePos.x); // X軸での反転
+    basePos.z = abs(basePos.z); // Z軸での反転
     
     return basePos;
 }
