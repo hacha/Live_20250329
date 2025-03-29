@@ -348,33 +348,9 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         
                         // インデックスが奇数の場合はスキップ
                         if (!isOddIndex(cellIndex)) {
-                            // 基本位置
+                            // 基本位置（固定）
                             vec3 basePos = vec3(0.0, 1.0, 0.0);
-                            
-                            // 虫のような動き
-                            float time = iTime * 0.5; // 動きの速さ
-                            float crawlPhase = dot(cellIndex.xz, vec2(0.7, 1.1)); // 各キューブで異なる位相
-                            
-                            // 上下運動（より有機的な動き）
-                            float verticalMotion = sin(time + crawlPhase) * 0.5 +
-                            sin(time * 1.3 + crawlPhase * 1.1) * 0.3 +
-                            sin(time * 2.1 + crawlPhase * 0.7) * 0.2;
-                            
-                            // 左右の揺れ
-                            float sideMotion = cos(time * 0.7 + crawlPhase) * 0.2 +
-                            cos(time * 1.5 + crawlPhase * 0.9) * 0.1;
-                            
-                            // 前後の揺れ
-                            float frontMotion = sin(time * 0.9 + crawlPhase * 1.2) * 0.2 +
-                            sin(time * 1.7 + crawlPhase * 0.8) * 0.1;
-                            
-                            // 最終位置の計算
-                            vec3 finalPos = basePos;
-                            finalPos.y += verticalMotion * 2.0; // 上下の動きを強調
-                            finalPos.x += sideMotion;
-                            finalPos.z += frontMotion;
-                            
-                            vec3 localP = vec3(q.x, p.y, q.y) - finalPos;
+                            vec3 localP = vec3(q.x, p.y, q.y) - basePos;
                             
                             // キューブの回転パラメータを取得
                             vec4 rotationParams = getRotationParams(cellIndex, iTime);
@@ -399,7 +375,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
                             
                             // 地面からの距離に応じたスムージング
-                            float groundDistance = finalPos.y;
+                            float groundDistance = basePos.y;
                             float smoothRange = 1.2;
                             float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
                             localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
