@@ -309,23 +309,23 @@ vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
 
 // キューブの痙攣的な拡縮を計算する関数
 vec3 getConvulsiveScale(float time) {
-    // 複数の高周波ノイズを合成
-    float n1 = smoothNoise(vec3(time * 8.0, 0.0, 0.0)); // 8Hz
-    float n2 = smoothNoise(vec3(time * 12.0, 1.0, 0.0)); // 12Hz
-    float n3 = smoothNoise(vec3(time * 15.0, 2.0, 0.0)); // 15Hz
-    float n4 = smoothNoise(vec3(time * 20.0, 3.0, 0.0)); // 20Hz
+    // 複数の高周波ノイズを合成（周波数を2倍に）
+    float n1 = smoothNoise(vec3(time * 16.0, 0.0, 0.0)); // 16Hz
+    float n2 = smoothNoise(vec3(time * 24.0, 1.0, 0.0)); // 24Hz
+    float n3 = smoothNoise(vec3(time * 30.0, 2.0, 0.0)); // 30Hz
+    float n4 = smoothNoise(vec3(time * 40.0, 3.0, 0.0)); // 40Hz
     
-    // 急激な変化のためのステップ関数
-    float s1 = step(0.5, n1) * 0.3;
-    float s2 = step(0.6, n2) * 0.2;
-    float s3 = step(0.4, n3) * 0.25;
-    float s4 = step(0.55, n4) * 0.15;
+    // 急激な変化のためのステップ関数（より大きな変化を許容）
+    float s1 = step(0.5, n1) * 0.5; // 0.3から0.5に増加
+    float s2 = step(0.6, n2) * 0.4; // 0.2から0.4に増加
+    float s3 = step(0.4, n3) * 0.45; // 0.25から0.45に増加
+    float s4 = step(0.55, n4) * 0.35; // 0.15から0.35に増加
     
-    // 基本スケール（2.0）に不規則な変動を加える
+    // 基本スケール（2.0）に不規則な変動を加える（変動幅を増加）
     float baseScale = 2.0;
-    float xScale = baseScale * (1.0 + s1 + s2 - s3 + s4);
-    float yScale = baseScale * (1.0 - s2 + s3 + s1 - s4);
-    float zScale = baseScale * (1.0 + s3 - s1 + s4 - s2);
+    float xScale = baseScale * (1.0 + s1 + s2 - s3 + s4) * 1.2; // 20%増幅
+    float yScale = baseScale * (1.0 - s2 + s3 + s1 - s4) * 1.2;
+    float zScale = baseScale * (1.0 + s3 - s1 + s4 - s2) * 1.2;
     
     return vec3(xScale, yScale, zScale);
 }
