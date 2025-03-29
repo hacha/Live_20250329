@@ -458,7 +458,7 @@ vec2 mapObjects(vec3 p) {
     float finalDist = sphereDist;
     float finalMaterial = 4.0;
     
-    // 20個の子球体を追加
+    // 20個の子オブジェクトを追加
     const int NUM_CHILDREN = 20;
     float baseDelay = 0.15;
     float maxSize = 0.95;
@@ -475,7 +475,17 @@ vec2 mapObjects(vec3 p) {
         childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
         
         float childRadius = sphereRadius * size;
-        float childDist = sdSphere(childRotatedP, childRadius);
+        float childDist;
+        
+        // インデックスが3で割って1余る場合は立方体を使用
+        if (i % 3 == 1) {
+            // 立方体のサイズを球体の半径に基づいて設定
+            vec3 cubeSize = vec3(childRadius * 0.8); // 0.8を掛けて球体より少し小さく
+            childDist = sdBox(childRotatedP, cubeSize);
+        } else {
+            // それ以外は球体を使用
+            childDist = sdSphere(childRotatedP, childRadius);
+        }
         
         // スムーズブレンド
         float blendWeight = 1.0 - t * 0.5;
