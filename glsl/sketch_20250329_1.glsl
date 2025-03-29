@@ -50,8 +50,8 @@ vec2 mapObjects(vec3 p) {
     vec3 spherePos = vec3(0.0, 1.0, 0.0);
     // グリッドごとに異なる上下運動を追加
     float wobbleSpeed = dot(cellIndex, vec3(0.7, 0.9, 1.1)); // グリッドごとに異なる速度
-    float wobbleRange = 0.5; // 上下の振幅
-    spherePos.y += wobbleRange * sin(iTime * 0.5 + wobbleSpeed); // ゆっくりとした上下運動
+    float wobbleRange = 0.75; // 上下の振幅
+    spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed); // ゆっくりとした上下運動
     
     vec3 localP = q - spherePos;
     
@@ -256,7 +256,7 @@ vec3 calcNormal(vec3 p)
         float camHeight = 3.2; // カメラの基本の高さ
         float camSpeed = -0.3; // カメラの回転速度
         float camVerticalSpeed = 0.15; // カメラの上下運動の速度
-        float camVerticalRange = 2.0; // カメラの上下運動の範囲
+        float camVerticalRange = 4.0; // カメラの上下運動の範囲
         
         // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
@@ -278,8 +278,12 @@ vec3 calcNormal(vec3 p)
         
         // レイマーチング
         float t = 0.0;
-        float tmax = 20.0;
-        float epsilon = 0.001;
+        float tmax = 80.0;
+        float epsilon = 0.0002;
+        float nearClip = 0.1; // ニアクリップ距離
+        
+        // 初期位置をニアクリップ位置に設定
+        t = nearClip;
         
         // 球体からの影響を蓄積
         vec3 sphereInfluence = vec3(0.0);
