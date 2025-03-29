@@ -358,6 +358,21 @@ vec3 calcNormal(vec3 p) {
         return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
     }
     
+    // トーンマッピング関数
+    vec3 toneMapping(vec3 color) {
+        // 露出調整
+        float exposure = 1.2;
+        color *= exposure;
+        
+        // ACESフィルムトーンマッピング
+        float a = 2.51;
+        float b = 0.03;
+        float c = 2.43;
+        float d = 0.59;
+        float e = 0.14;
+        return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
+    }
+    
     // カラーグレーディング
     vec3 colorGrading(vec3 color) {
         // コントラストの強化
@@ -374,21 +389,6 @@ vec3 calcNormal(vec3 p) {
         color += warmth * (1.0 - color); // ハイライトへの影響を抑制
         
         return color;
-    }
-    
-    // トーンマッピング関数
-    vec3 toneMapping(vec3 color) {
-        // 露出調整
-        float exposure = 1.2;
-        color *= exposure;
-        
-        // ACESフィルムトーンマッピング
-        float a = 2.51;
-        float b = 0.03;
-        float c = 2.43;
-        float d = 0.59;
-        float e = 0.14;
-        return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
     }
     
     // ナバホ族の幾何学模様を生成する関数
