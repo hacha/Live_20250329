@@ -378,20 +378,48 @@ vec3 calcNormal(vec3 p) {
     
     // ナバホ族の幾何学模様を生成する関数
     vec3 navajoPattern(vec2 uv, float time) {
-        // 基準位置のtween
+        // 極座標空間を移動するモジュレーションオブジェクト
+        float modObjCount = 3.0; // モジュレーションオブジェクトの数
+        vec2 modulation = vec2(0.0);
+        
+        for(float i = 0.0; i < modObjCount; i ++ ) {
+            // 各オブジェクトの極座標での位置
+            float objR = 0.2 + 0.3 * i / modObjCount; // 半径
+            float objTheta = time * (0.5 - i * 0.2) + i * PI * 2.0 / modObjCount; // 角度
+            
+            // 極座標から直交座標に変換
+            vec2 objPos = vec2(
+                objR * cos(objTheta),
+                objR * sin(objTheta)
+            );
+            
+            // オブジェクトからの距離に基づくモジュレーション
+            float dist = length(uv - objPos);
+            float influence = exp(-dist * 4.0) * (1.0 + sin(time * 2.0 + i * PI * 0.5) * 0.5);
+            modulation += vec2(
+                sin(dist * 10.0 + time + i),
+                cos(dist * 8.0 - time * 1.2 + i)
+            ) * influence;
+        }
+        
+        // 基準位置のtween（モジュレーションの影響を追加）
         vec2 baseOffset = vec2(
             sin(time * 0.3) * 0.5 + cos(time * 0.2) * 0.3,
             cos(time * 0.4) * 0.5 + sin(time * 0.1) * 0.3
-        );
+        ) + modulation * 0.2;
         
         // 極座標変換のための基準点を移動
         vec2 center = uv - baseOffset;
         float r = length(center);
         float theta = atan(center.y, center.x);
         
-        // 極座標空間での繰り返し
-        float repeatR = 4.0; // 半径方向の繰り返し
-        float repeatTheta = 8.0; // 角度方向の繰り返し
+        // モジュレーションの影響を極座標パラメータに適用
+        r += modulation.x * 0.1;
+        theta += modulation.y * 0.2;
+        
+        // 極座標空間での繰り返し（モジュレーションの影響を追加）
+        float repeatR = 4.0 + sin(modulation.x * 2.0) * 0.5;
+        float repeatTheta = 8.0 + cos(modulation.y * 2.0) * 1.0;
         
         // 極座標空間での変形
         r = fract(r * repeatR);
@@ -403,11 +431,12 @@ vec3 calcNormal(vec3 p) {
             r * sin(theta * 2.0 * PI)
         );
         
-        // スケールの調整（より細かいパターン）
-        polarUV *= 8.0;
+        // スケールの調整（モジュレーションの影響を追加）
+        float scale = 8.0 + length(modulation) * 2.0;
+        polarUV *= scale;
         
-        // 時間による回転
-        float rotation = time * 0.05;
+        // 時間による回転（モジュレーションの影響を追加）
+        float rotation = time * 0.05 + length(modulation) * 0.3;
         mat2 rot = mat2(cos(rotation), - sin(rotation), sin(rotation), cos(rotation));
         polarUV = rot * polarUV;
         
@@ -415,34 +444,35 @@ vec3 calcNormal(vec3 p) {
         vec2 id = floor(polarUV);
         vec2 gv = fract(polarUV) - 0.5;
         
-        // 複数のパターンの生成
-        float diamond = abs(gv.x) + abs(gv.y); // ダイヤモンドパターン
-        float circle = length(gv); // 円形パターン
-        float zigzag = sin(polarUV.x * 4.0 + time * 0.2) * cos(polarUV.y * 4.0 + time * 0.15); // ジグザグ
-        float rays = abs(sin(atan(gv.y, gv.x) * 8.0)); // 放射状パターン
-        float squares = max(abs(gv.x), abs(gv.y)); // 正方形パターン
-        float stairs = step(0.5, fract((polarUV.x + polarUV.y) * 2.0)); // 階段パターン
+        // パターンの生成（モジュレーションの影響を追加）
+        float diamond = abs(gv.x) + abs(gv.y) + modulation.x * 0.2;
+        float circle = length(gv) + modulation.y * 0.2;
+        float zigzag = sin(polarUV.x * 4.0 + time * 0.2 + modulation.x) *
+        cos(polarUV.y * 4.0 + time * 0.15 + modulation.y);
+        float rays = abs(sin(atan(gv.y, gv.x) * 8.0 + length(modulation) * 4.0));
+        float squares = max(abs(gv.x), abs(gv.y)) + dot(modulation, modulation) * 0.1;
+        float stairs = step(0.5 + modulation.x * 0.1, fract((polarUV.x + polarUV.y) * 2.0));
         
-        // パターンの組み合わせ（極座標空間に合わせて調整）
-        float pattern1 = mix(diamond, circle, 0.5 + sin(r * 10.0 + time) * 0.5);
-        float pattern2 = mix(zigzag, rays, sin(theta * 5.0 + time * 0.3) * 0.5 + 0.5);
-        float pattern3 = mix(squares, stairs, cos(r * 8.0 + theta * 4.0 + time * 0.2) * 0.5 + 0.5);
+        // パターンの組み合わせ（モジュレーションの影響を考慮）
+        float pattern1 = mix(diamond, circle, 0.5 + sin(r * 10.0 + time + modulation.x) * 0.5);
+        float pattern2 = mix(zigzag, rays, sin(theta * 5.0 + time * 0.3 + modulation.y) * 0.5 + 0.5);
+        float pattern3 = mix(squares, stairs, cos(r * 8.0 + theta * 4.0 + time * 0.2 + length(modulation)) * 0.5 + 0.5);
         
-        // 最終パターン（極座標空間での位置を考慮）
+        // 最終パターン（モジュレーションの影響を追加）
         float finalPattern = mix(
-            mix(pattern1, pattern2, sin(r * 6.0 + time * 0.1) * 0.5 + 0.5),
+            mix(pattern1, pattern2, sin(r * 6.0 + time * 0.1 + modulation.x) * 0.5 + 0.5),
             pattern3,
-            cos(theta * 4.0 + time * 0.15) * 0.5 + 0.5
+            cos(theta * 4.0 + time * 0.15 + modulation.y) * 0.5 + 0.5
         );
         
-        // 4色のカラーパレット（より鮮やかな色）
-        vec3 col1 = vec3(1.0, 0.3, 0.2); // 赤
-        vec3 col2 = vec3(0.2, 0.5, 1.0); // 青
-        vec3 col3 = vec3(1.0, 0.8, 0.2); // 黄色
-        vec3 col4 = vec3(0.3, 1.0, 0.4); // 緑
+        // カラーパレット（モジュレーションの影響を追加）
+        vec3 col1 = vec3(1.0, 0.3, 0.2) + modulation.x * 0.2;
+        vec3 col2 = vec3(0.2, 0.5, 1.0) + modulation.y * 0.2;
+        vec3 col3 = vec3(1.0, 0.8, 0.2) + length(modulation) * 0.2;
+        vec3 col4 = vec3(0.3, 1.0, 0.4) + dot(modulation, modulation) * 0.1;
         
-        // 極座標に基づいた色の選択
-        float t = mod(finalPattern + r * 2.0 + theta + time * 0.2, 4.0);
+        // 色の選択（モジュレーションの影響を追加）
+        float t = mod(finalPattern + r * 2.0 + theta + time * 0.2 + length(modulation), 4.0);
         vec3 color;
         
         if (t < 1.0) {
@@ -455,14 +485,27 @@ vec3 calcNormal(vec3 p) {
             color = mix(col4, col1, t - 3.0);
         }
         
-        // パターンの強度に基づいて色を調整（極座標空間での位置を考慮）
+        // パターンの強度調整（モジュレーションの影響を追加）
         float intensity = smoothstep(0.0, 1.0, finalPattern);
-        intensity *= 1.0 + sin(r * 10.0 + theta * 8.0 + time) * 0.2; // 極座標による変調
+        intensity *= 1.0 + sin(r * 10.0 + theta * 8.0 + time + length(modulation) * 2.0) * 0.2;
         color = mix(vec3(0.1), color, intensity);
         
-        // 放射状のグロー効果
-        float glow = pow(1.0 - r, 2.0) * 0.5;
+        // グロー効果（モジュレーションの影響を追加）
+        float glow = pow(1.0 - r, 2.0) * 0.5 * (1.0 + length(modulation) * 0.3);
         color += vec3(1.0, 0.8, 0.6) * glow;
+        
+        // モジュレーションオブジェクトの可視化（オプション）
+        for(float i = 0.0; i < modObjCount; i ++ ) {
+            float objR = 0.2 + 0.3 * i / modObjCount;
+            float objTheta = time * (0.5 - i * 0.2) + i * PI * 2.0 / modObjCount;
+            vec2 objPos = vec2(
+                objR * cos(objTheta),
+                objR * sin(objTheta)
+            );
+            float objDist = length(uv - objPos);
+            float objGlow = exp(-objDist * 20.0) * (1.0 + sin(time * 4.0 + i * PI) * 0.5);
+            color += vec3(0.8, 0.9, 1.0) * objGlow;
+        }
         
         return color;
     }
