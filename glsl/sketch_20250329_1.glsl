@@ -454,41 +454,60 @@ vec3 calcNormal(vec3 p) {
     
     // ピクセルグリッチエフェクト
     vec3 pixelGlitch(vec3 color, vec2 uv, float time) {
-        // グリッドサイズの定義（時間とともにゆっくり変化）
-        float gridSize = 12.0 + sin(time * 0.2) * 3.0; // さらに遅い変化、変動幅も小さく
+        // グリッドサイズの定義
+        float gridSize = 12.0 + sin(time * 0.2) * 3.0;
         vec2 grid = floor(uv * gridSize) / gridSize;
         
-        // ノイズ生成（さらに低頻度に）
-        float noise = hash(vec3(grid * 20.0, time * 0.3)); // より遅い時間変化
-        float glitchStr = step(0.992, noise); // グリッチの発生確率をさらに下げる（0.8%）
+        // ノイズ生成（低頻度を維持）
+        float noise = hash(vec3(grid * 20.0, time * 0.3));
+        float glitchStr = step(0.992, noise); // 0.8%の発生確率を維持
         
-        // RGB分離効果（さらに控えめに）
-        float rOffset = sin(grid.x * 3.0 + time * 0.3) * 0.005; // 強度をさらに半分に
-        float gOffset = cos(grid.y * 3.0 - time * 0.3) * 0.005;
-        float bOffset = sin((grid.x + grid.y) * 5.0 + time * 0.3) * 0.005;
+        // RGB分離効果（発生時は強く）
+        float rOffset = sin(grid.x * 8.0 + time * 0.3) * 0.3 * glitchStr; // 強度を大幅に上げる
+        float gOffset = cos(grid.y * 8.0 - time * 0.3) * 0.3 * glitchStr;
+        float bOffset = sin((grid.x + grid.y) * 10.0 + time * 0.3) * 0.3 * glitchStr;
         
-        // カラーシフト
+        // カラーシフト（より激しく）
         vec3 glitchColor;
-        glitchColor.r = color.r + rOffset * glitchStr;
-        glitchColor.g = color.g + gOffset * glitchStr;
-        glitchColor.b = color.b + bOffset * glitchStr;
+        glitchColor.r = color.r + rOffset;
+        glitchColor.g = color.g + gOffset;
+        glitchColor.b = color.b + bOffset;
         
-        // ランダムなカラーノイズ（さらに控えめに）
+        // 色の反転効果を追加
+        glitchColor = mix(glitchColor, 1.0 - glitchColor, step(0.996, noise));
+        
+        // ランダムなカラーノイズ（より強く）
         vec3 randomColor = vec3(
             hash(vec3(grid * 1.1, time * 0.3)),
             hash(vec3(grid * 2.2, time * 0.3)),
             hash(vec3(grid * 3.3, time * 0.3))
+        ) * 2.0; // 2倍の強度
+        
+        // 時間に基づくグリッチラインの生成（低頻度だが強い効果）
+        float line = step(0.995, sin(grid.y * 30.0 + time * 1.5));
+        
+        // 最終的なグリッチ効果の合成（発生時は強く）
+        vec3 finalColor = mix(
+            color,
+            mix(glitchColor, randomColor, step(0.997, noise)), // ランダムカラーの混合を強く
+            (glitchStr * 0.9 + line * 0.8)// 効果の強度を上げる
         );
         
-        // 時間に基づくグリッチラインの生成（さらに低頻度に）
-        float line = step(0.995, sin(grid.y * 30.0 + time * 1.5)); // 発生確率0.5%に
+        // 追加の歪み効果（発生時のみ）
+        if (glitchStr > 0.5) {
+            // 垂直方向の歪み
+            float verticalDistortion = sin(uv.y * 100.0 + time) * 0.5;
+            finalColor = mix(finalColor, finalColor.brg, verticalDistortion * glitchStr);
+            
+            // 色相のシフト
+            float hueShift = sin(time * 10.0) * 0.5 + 0.5;
+            finalColor = mix(finalColor, finalColor.gbr, hueShift * glitchStr);
+            
+            // 極端な明るさの変化
+            finalColor *= 1.0 + sin(time * 20.0) * 0.5 * glitchStr;
+        }
         
-        // 最終的なグリッチ効果の合成（さらに控えめに）
-        return mix(
-            glitchColor,
-            randomColor,
-            (glitchStr * 0.2 + line * 0.1) * step(0.95, noise)
-        );
+        return finalColor;
     }
     
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -622,9 +641,10 @@ vec3 calcNormal(vec3 p) {
         col = toneMapping(col);
         col = colorGrading(col);
         
-        // ピクセルグリッチエフェクト
+        // ピクセルグリッチエフェクトの適用（より強く）
         vec2 glitchUV = fragCoord / iResolution.xy;
-        col = pixelGlitch(col, glitchUV, iTime);
+        float glitchTime = iTime * 2.0; // グリッチの時間スケールを2倍に
+        col = pixelGlitch(col, glitchUV, glitchTime);
         
         // ガンマ補正
         col = pow(col, vec3(0.4545));
