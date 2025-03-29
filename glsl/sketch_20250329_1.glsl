@@ -482,6 +482,10 @@ vec2 mapObjects(vec3 p) {
             // 立方体のサイズを球体の半径に基づいて設定
             vec3 cubeSize = vec3(childRadius * 0.8); // 0.8を掛けて球体より少し小さく
             childDist = sdBox(childRotatedP, cubeSize);
+        } else if (i % 9 == 8) {
+            // Y軸方向に大きく伸びた立方体を表示
+            vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 4.0, childRadius * 0.6);
+            childDist = sdBox(childRotatedP, elongatedSize);
         } else {
             // それ以外は球体を使用
             childDist = sdSphere(childRotatedP, childRadius);
