@@ -63,7 +63,7 @@ float sdBox(vec3 p, vec3 b) {
 
 // 3x3x3のキューブ群の距離関数
 float sdCubeGrid(vec3 p, vec3 totalSize) {
-    vec3 smallCubeSize = totalSize / 3.0;
+    vec3 smallCubeSize = totalSize / 3.5;
     vec3 cellIndex = floor((p + totalSize * 0.5) / smallCubeSize);
     vec3 localP = mod(p + totalSize * 0.5, smallCubeSize) - smallCubeSize * 0.5;
     
@@ -106,8 +106,22 @@ vec2 mapObjects(vec3 p) {
     vec3 rotatedP = p - cubePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
-    // モーフィング係数の計算（0.0から1.0の間で周期的に変化）
-    float morphFactor = 0.5 + 0.5 * sin(iTime * 0.5);
+    // モーフィング係数の計算
+    float morphTime = mod(iTime * 0.2, 4.0); // 4秒周期でゆっくり変化
+    float morphFactor;
+    if (morphTime < 1.0) {
+        // 単一キューブの状態で停止
+        morphFactor = 0.0;
+    } else if (morphTime < 2.0) {
+        // 単一キューブから3x3x3への遷移
+        morphFactor = smoothstep(0.0, 1.0, morphTime - 1.0);
+    } else if (morphTime < 3.0) {
+        // 3x3x3の状態で停止
+        morphFactor = 1.0;
+    } else {
+        // 3x3x3から単一キューブへの遷移
+        morphFactor = 1.0 - smoothstep(0.0, 1.0, morphTime - 3.0);
+    }
     
     // キューブの距離計算（モーフィングを適用）
     float cubeDist = morphDistance(rotatedP, cubeSize, morphFactor);
