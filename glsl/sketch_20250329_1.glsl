@@ -488,6 +488,10 @@ vec2 mapObjects(vec3 p) {
             // Y軸方向に大きく伸びた立方体を表示
             vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 44.0, childRadius * 0.6);
             childDist = sdBox(childRotatedP, elongatedSize);
+        } else if (i % 5 == 1) {
+            // Z軸方向に大きく伸びた立方体を表示
+            vec3 zElongatedSize = vec3(childRadius * 0.8, childRadius * 0.8, childRadius * 88.0);
+            childDist = sdBox(childRotatedP, zElongatedSize);
         } else {
             // それ以外は球体を使用
             childDist = sdSphere(childRotatedP, childRadius);
