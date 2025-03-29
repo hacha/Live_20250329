@@ -489,7 +489,7 @@ vec2 mapObjects(vec3 p) {
     float cubeDist = sdBox(rotatedP, cubeSize);
     
     // チェッカーパターンの計算
-    float checkerScale = 2.0; // チェッカーの大きさ
+    float checkerScale = 6.5;
     vec3 checkerP = rotatedP * checkerScale;
     float checker = step(0.0, sin(checkerP.x) * sin(checkerP.y)) *
     step(0.0, sin(checkerP.y) * sin(checkerP.z)) *
@@ -498,14 +498,28 @@ vec2 mapObjects(vec3 p) {
     // FBMディスプレイスメントとチェッカーパターンの組み合わせ
     float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0);
     float displacement = fbm(rotatedP * 1.5 + iTime * timeFactor) * 0.95;
-    displacement *= mix(0.8, 1.2, checker); // チェッカーパターンによってディスプレイスメントを変調
+    displacement *= mix(0.8, 1.2, checker);
     
     cubeDist -= displacement;
     
-    // マテリアルIDをチェッカーパターンに基づいて変更（5.0または6.0）
-    float materialId = mix(5.0, 6.0, checker);
+    // 白いチェッカー部分に球体を配置
+    float sphereRadius = 0.15;
+    float sphereOffset = 0.2; // 立方体の表面からのオフセット
+    float sphereDist = 1e10;
     
-    return vec2(cubeDist, materialId);
+    if (checker > 0.5) {
+        // 立方体の表面の法線方向を計算
+        vec3 normal = normalize(rotatedP);
+        // 球体の位置を法線方向に少しオフセット
+        vec3 spherePos = rotatedP - normal * sphereOffset;
+        sphereDist = sdSphere(p - cubePos - spherePos, sphereRadius);
+    }
+    
+    // 立方体と球体の距離を結合
+    float finalDist = min(cubeDist, sphereDist);
+    float materialId = sphereDist < cubeDist ? 7.0 : mix(5.0, 6.0, checker);
+    
+    return vec2(finalDist, materialId);
 }
 
 // シーンの距離関数
@@ -772,8 +786,15 @@ vec3 calcNormal(vec3 p) {
             vec3 n = calcNormal(p);
             float material = getMaterial(p);
             
-            // チェッカーパターンに基づいて色を変更
-            vec3 baseColor = (material > 5.5) ? vec3(0.9, 0.9, 0.9) : vec3(0.2, 0.2, 0.2);
+            // マテリアルに基づいて色を変更
+            vec3 baseColor;
+            if (material > 6.5) {
+                // 球体の色（金属的な光沢）
+                baseColor = vec3(0.8, 0.7, 0.5);
+            } else {
+                // チェッカーパターンの色
+                baseColor = (material > 5.5) ? vec3(0.9, 0.9, 0.9) : vec3(0.2, 0.2, 0.2);
+            }
             
             // 基本の光源方向
             vec3 baseLight = normalize(vec3(1.0, 0.50, - 1.0));
@@ -819,9 +840,9 @@ vec3 calcNormal(vec3 p) {
             float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
             vec3 objColor = mix(color1, color2, mixFactor) * baseColor;
             
-            // フレネル効果
-            float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
-            objColor *= (0.8 + fresnel * 0.4);
+            // フレネル効果の強化（球体用）
+            float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), material > 6.5 ? 5.0 : 3.0);
+            objColor *= material > 6.5 ? (0.6 + fresnel * 0.8) : (0.8 + fresnel * 0.4);
             
             // ライティング計算
             col = objColor * (0.2 + 0.4 * baseDiff);
