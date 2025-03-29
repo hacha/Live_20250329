@@ -294,33 +294,36 @@ vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
     // フレーム内での相対位置（0.0から1.0）
     float framePosition = delay / (0.15 * 20.0); // 20は子球体の総数
     
-    // インデックスが深いほど、より大きな周回半径と遅い速度（範囲を縮小）
-    float orbitRadius = mix(3.0, 12.0, framePosition); // 半径を3から12に調整
-    float orbitSpeed = mix(1.2, 0.6, framePosition); // 速度を1.2から0.6に調整
+    // インデックスが深いほど、より大きな周回半径と遅い速度（3倍に拡大）
+    float orbitRadius = mix(9.0, 36.0, framePosition); // 半径を9から36に調整（3倍）
+    float orbitSpeed = mix(1.5, 0.8, framePosition); // 速度は維持
     
     // より複雑な周回運動の計算
     float angle = delayedTime * orbitSpeed;
     float verticalAngle = angle * 0.7; // 垂直方向の角度は水平より遅く
     
-    // らせん状の軌道を計算
+    // らせん状の軌道を計算（一定距離を保つ）
     vec3 orbit = vec3(
         cos(angle) * orbitRadius,
-        sin(verticalAngle) * orbitRadius * 0.4, // 高さの変化を40%に抑制
+        sin(verticalAngle) * orbitRadius * 0.3, // 高さの変化を30%に抑制
         sin(angle) * orbitRadius
     );
     
     // 親の位置を中心とした周回運動
     vec3 orbitPos = parentPos + orbit;
     
-    // 親の位置と周回位置をブレンド（追従性を強化）
-    float followStrength = mix(0.9, 0.4, framePosition); // 追従の強さを0.9から0.4に調整
+    // 親の位置と周回位置をブレンド（追従性を調整）
+    float followStrength = mix(0.7, 0.3, framePosition); // 追従の強さを維持
     vec3 finalPos = mix(orbitPos, basePos, followStrength);
     
-    // 集中性を高めるための補正
-    vec3 toParent = normalize(parentPos - finalPos);
-    float distanceToParent = length(parentPos - finalPos);
-    float pullFactor = smoothstep(15.0, 5.0, distanceToParent); // 距離が15以上で引き寄せ開始
-    finalPos = mix(finalPos, finalPos + toParent * distanceToParent * 0.2, pullFactor);
+    // 親との距離を一定に保つ
+    vec3 toParent = finalPos - parentPos;
+    float currentDist = length(toParent);
+    float targetDist = orbitRadius + 6.0; // 目標距離（基本半径 + オフセット）を3倍に
+    
+    // 距離の補正（スムーズに）
+    float distanceCorrection = smoothstep(targetDist * 0.8, targetDist * 1.2, currentDist);
+    finalPos = parentPos + normalize(toParent) * mix(targetDist, currentDist, distanceCorrection);
     
     return finalPos;
 }
