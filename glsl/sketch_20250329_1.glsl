@@ -248,13 +248,15 @@ vec3 calcNormal(vec3 p)
         
         // カメラの設定
         float camRadius = 17.0; // カメラの回転半径
-        float camHeight = 3.2; // カメラの高さ
+        float camHeight = 3.2; // カメラの基本の高さ
         float camSpeed = -0.3; // カメラの回転速度
+        float camVerticalSpeed = 0.15; // カメラの上下運動の速度
+        float camVerticalRange = 2.0; // カメラの上下運動の範囲
         
         // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
             camRadius * cos(iTime * camSpeed),
-            camHeight + 1.0 * sin(iTime * camSpeed * 0.5), // 上下にも少し動く
+            camHeight + camVerticalRange * sin(iTime * camVerticalSpeed), // よりゆっくりと大きく上下に動く
             camRadius * sin(iTime * camSpeed)
         );
         
