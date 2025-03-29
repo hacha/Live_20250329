@@ -343,21 +343,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         vec3 rotatedP = p - cubePos;
                         rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
                         
-                        // モーフィング係数の計算
-                        float morphTime = mod(iTime * 0.2, 4.0);
-                        float morphFactor;
-                        if (morphTime < 1.0) {
-                            morphFactor = 0.0;
-                        } else if (morphTime < 2.0) {
-                            morphFactor = smoothstep(0.0, 1.0, morphTime - 1.0);
-                        } else if (morphTime < 3.0) {
-                            morphFactor = 1.0;
-                        } else {
-                            morphFactor = 1.0 - smoothstep(0.0, 1.0, morphTime - 3.0);
-                        }
-                        
-                        // 親キューブの距離計算
-                        float cubeDist = morphDistance(rotatedP, cubeSize, morphFactor);
+                        // 親キューブの距離計算（モーフィングなし）
+                        float cubeDist = sdBox(rotatedP, cubeSize);
                         if (cubeDist < res.x) {
                             res = vec2(cubeDist, 4.0);
                         }
@@ -365,8 +352,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // 20個の子キューブを追加
                         const int NUM_CHILDREN = 20;
                         float baseDelay = 0.15; // 基本の遅延時間
-                        float maxSize = 0.85; // 最大サイズ（親の85%）
-                        float minSize = 0.30; // 最小サイズ（親の30%）
+                        float maxSize = 0.95; // 最大サイズ（親の85%）
+                        float minSize = 0.20; // 最小サイズ（親の30%）
                         
                         for(int i = 0; i < NUM_CHILDREN; i ++ ) {
                             // 遅延時間を計算（等間隔）
@@ -384,8 +371,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             // 子キューブのサイズを設定
                             vec3 childSize = cubeSize * size;
                             
-                            // 子キューブの距離計算
-                            float childDist = morphDistance(childRotatedP, childSize, morphFactor);
+                            // 子キューブの距離計算（モーフィングなし）
+                            float childDist = sdBox(childRotatedP, childSize);
                             
                             // 子キューブの距離と材質IDを更新（材質IDは4.1から4.99）
                             if (childDist < res.x) {
