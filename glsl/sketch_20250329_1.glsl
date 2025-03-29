@@ -933,8 +933,8 @@ vec3 calcNormal(vec3 p)
                 float hue2 = pattern2 - iTime * 0.15;
                 
                 // HSVからRGBへの変換（1つ目のパターン）
-                vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8, 0.3));
-                vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7, 0.25));
+                vec3 color1 = hsv2rgb(vec3(fract(hue1), 0.8 * 1.8, 0.3));
+                vec3 color2 = hsv2rgb(vec3(fract(hue2), 0.7 * 1.8, 0.25));
                 
                 // レイの方向に基づいて色を混ぜる
                 float mixFactor = smoothstep(-0.5, 0.5, dot(reflectDir.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
@@ -946,6 +946,10 @@ vec3 calcNormal(vec3 p)
                     cos(reflectDir.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
                     sin((reflectDir.x + reflectDir.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
                 );
+                
+                // コントラストを1.4倍に調整
+                vec3 contrastAdjusted = (objColor - 0.5) * 1.4 + 0.5;
+                objColor = clamp(contrastAdjusted, 0.0, 1.0);
                 
                 // 最終的な色の合成
                 objColor = mix(objColor, rainbowEffect, 0.3);
