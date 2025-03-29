@@ -636,35 +636,52 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         vec3 getSkyboxPattern(vec3 rd, float time) {
                             // 基本となる方向ベクトルを時間とともに歪ませる
                             vec3 dir = rd;
-                            dir.xy *= rot2D(sin(time * 0.1) * 0.2);
-                            dir.yz *= rot2D(cos(time * 0.15) * 0.3);
+                            dir.xy *= rot2D(sin(time * 0.3) * 0.5);
+                            dir.yz *= rot2D(cos(time * 0.25) * 0.6);
+                            dir.xz *= rot2D(sin(time * 0.2) * 0.4);
                             
-                            // 複数のノイズレイヤーを合成
-                            float n1 = smoothNoise(dir * 2.0 + vec3(time * 0.1));
-                            float n2 = smoothNoise(dir * 4.0 - vec3(time * 0.15));
-                            float n3 = smoothNoise(dir * 8.0 + vec3(time * 0.2));
+                            // 複数の周期のノイズを合成
+                            float n1 = smoothNoise(dir * 2.0 + vec3(time * 0.2));
+                            float n2 = smoothNoise(dir * 4.0 - vec3(time * 0.25));
+                            float n3 = smoothNoise(dir * 8.0 + vec3(time * 0.3));
+                            float n4 = smoothNoise(dir * 16.0 - vec3(time * 0.15));
                             
-                            // 歪んだノイズパターン
-                            float pattern = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+                            // サイケデリックなパターン生成
+                            float pattern = n1 * 0.4 + n2 * 0.3 + n3 * 0.2 + n4 * 0.1;
                             
-                            // 不穏な色の設定
-                            vec3 color1 = vec3(0.1, 0.02, 0.15); // 暗い紫
-                            vec3 color2 = vec3(0.3, 0.05, 0.05); // 暗い赤
-                            vec3 color3 = vec3(0.02, 0.1, 0.15); // 暗い青
+                            // 鮮やかな色の設定
+                            vec3 color1 = vec3(0.8, 0.1, 0.8); // マゼンタ
+                            vec3 color2 = vec3(0.1, 0.8, 0.8); // シアン
+                            vec3 color3 = vec3(0.8, 0.8, 0.1); // イエロー
+                            vec3 color4 = vec3(0.2, 0.8, 0.2); // ネオングリーン
                             
-                            // パターンに基づいて色を混ぜる
+                            // 時間に基づく色の変化
+                            float t1 = sin(time * 0.5) * 0.5 + 0.5;
+                            float t2 = cos(time * 0.4) * 0.5 + 0.5;
+                            float t3 = sin(time * 0.3) * 0.5 + 0.5;
+                            
+                            // 色の混合
                             vec3 finalColor = mix(color1, color2, pattern);
-                            finalColor = mix(finalColor, color3, smoothNoise(dir * 3.0 + vec3(time * 0.13)));
+                            finalColor = mix(finalColor, color3, smoothNoise(dir * 3.0 + vec3(time * 0.23)));
+                            finalColor = mix(finalColor, color4, smoothNoise(dir * 5.0 - vec3(time * 0.17)));
                             
-                            // 渦を追加
-                            vec2 vortex = vec2(
-                                sin(atan(dir.z, dir.x) * 3.0 + time),
-                                cos(atan(dir.y, length(dir.xz)) * 2.0 - time)
+                            // 渦巻きパターンの追加
+                            vec2 spiral = vec2(
+                                sin(atan(dir.z, dir.x) * 8.0 + time * 2.0),
+                                cos(atan(dir.y, length(dir.xz)) * 6.0 - time * 1.5)
                             );
-                            float vortexPattern = smoothNoise(vec3(vortex * 2.0, time * 0.1)) * 0.3;
+                            float spiralPattern = smoothNoise(vec3(spiral * 3.0, time * 0.2)) * 0.5;
                             
-                            // 最終的な色を合成
-                            finalColor += vec3(0.1, 0.02, 0.15) * vortexPattern;
+                            // 波紋パターンの追加
+                            float ripple = sin(length(dir) * 10.0 - time * 2.0) * 0.5 + 0.5;
+                            
+                            // パターンの合成
+                            finalColor += vec3(0.8, 0.2, 0.8) * spiralPattern;
+                            finalColor += vec3(0.2, 0.8, 0.8) * ripple * 0.3;
+                            
+                            // 色の彩度を上げる
+                            finalColor = pow(finalColor, vec3(0.8));
+                            finalColor = clamp(finalColor * 1.2, 0.0, 1.0);
                             
                             return finalColor;
                         }
