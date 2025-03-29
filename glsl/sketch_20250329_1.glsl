@@ -437,6 +437,17 @@ float smin(float a, float b, float k) {
 }
 
 vec2 mapObjects(vec3 p) {
+    // 四次元空間での繰り返し
+    float repetitionSize = 40.0; // 空間的な繰り返しの大きさ
+    float timeRepetition = 8.0; // 時間的な繰り返しの周期
+    
+    // 空間的な繰り返し
+    vec3 repetitionOffset = vec3(repetitionSize);
+    p = mod(p + repetitionOffset * 0.5, repetitionOffset) - repetitionOffset * 0.5;
+    
+    // 時間的な繰り返し（第4軸）
+    float localTime = mod(iTime, timeRepetition);
+    
     // X、Y、Z座標すべてをスムーズに処理
     float smoothK = 1.0; // スムーズさの制御パラメータ
     p.x = smin(p.x, - p.x, smoothK);
@@ -447,13 +458,13 @@ vec2 mapObjects(vec3 p) {
     vec2 res = vec2(1e10, - 1.0);
     
     // 親球体の位置と処理
-    vec3 spherePos = getFlyingCubePosition(iTime);
-    vec3 scaleVec = getConvulsiveScale(iTime);
+    vec3 spherePos = getFlyingCubePosition(localTime);
+    vec3 scaleVec = getConvulsiveScale(localTime);
     float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0;
     
     // 親球体の回転
     vec3 rotatedP = p - spherePos;
-    rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
+    rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), localTime) * rotatedP;
     
     // 親球体の距離計算
     float sphereDist = sdSphere(rotatedP, sphereRadius);
@@ -472,9 +483,9 @@ vec2 mapObjects(vec3 p) {
         float t = float(i) / float(NUM_CHILDREN - 1);
         float size = mix(maxSize, minSize, t);
         
-        vec3 childPos = getChildCubePosition(spherePos, iTime, delay);
+        vec3 childPos = getChildCubePosition(spherePos, localTime, delay);
         vec3 childRotatedP = p - childPos;
-        childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
+        childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), localTime - delay) * childRotatedP;
         
         float childRadius = sphereRadius * size;
         float childDist;
