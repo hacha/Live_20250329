@@ -766,7 +766,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 
                                 // 色を設定
                                 vec3 col = vec3(0.0);
-                                float alpha = 1.0; // skyboxは常に不透明
+                                float alpha = 1.0;
                                 
                                 // 物体に当たった場合
                                 if (t < tmax) {
@@ -780,38 +780,37 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                         if (SHOW_GRID) {
                                             // グリッド描画関数を呼び出し
                                             vec4 gridResult = drawGrid(p, t);
-                                            objColor = gridResult.rgb;
+                                            objColor = gridResult.rgb * 0.3; // グリッドを暗く
                                         } else {
-                                            // グリッドを表示しない場合は単色
                                             objColor = vec3(0.0);
                                         }
                                     } else if (material < 1.5) { // 球体
-                                        objColor = vec3(1.0, 1.0, 1.0); // 白色
+                                        objColor = vec3(0.5); // 暗めの白色
                                     } else if (material < 2.05) { // グリッドキューブ本体
                                         // グリッドの位置に基づいて色を変化
                                         vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                                        objColor = getCubeColor(cellIndex, iTime);
+                                        objColor = getCubeColor(cellIndex, iTime) * 0.5; // 色を半分の明るさに
                                         float blinkFactor = blink(cellIndex, iTime);
                                         objColor *= blinkFactor;
                                     } else if (material < 4.5) { // 親キューブと子キューブ
-                                        // 基本の虹色効果
+                                        // 基本の虹色効果（暗めに）
                                         objColor = vec3(
-                                            0.5 + 0.5 * sin(iTime * 1.1),
-                                            0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
-                                            0.5 + 0.5 * sin(iTime * 1.5 + PI)
-                                        ) * 0.75;
+                                            0.3 + 0.3 * sin(iTime * 1.1),
+                                            0.3 + 0.3 * sin(iTime * 1.3 + PI * 0.5),
+                                            0.3 + 0.3 * sin(iTime * 1.5 + PI)
+                                        ) * 0.5;
                                         
-                                        // 子キューブの場合は色を少し暗く
+                                        // 子キューブの場合は色をさらに暗く
                                         if (material > 4.05) {
                                             float childIndex = (material - 4.1) / 0.045; // 0から19
-                                            objColor *= mix(0.9, 0.4, childIndex / 19.0); // だんだん暗く
+                                            objColor *= mix(0.7, 0.2, childIndex / 19.0); // より暗く
                                         }
                                         
                                         // 反射レイの計算
                                         vec3 reflectDir = reflect(rd, n);
                                         
                                         // 反射レイのレイマーチング
-                                        vec3 reflectPos = p + n * 0.002; // 表面から少し離す
+                                        vec3 reflectPos = p + n * 0.002;
                                         float reflectT = 0.0;
                                         float maxReflectDist = 20.0;
                                         vec3 reflectCol = vec3(0.0);
@@ -823,20 +822,18 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                             float rd = map(rp);
                                             
                                             if (rd < epsilon) {
-                                                // 物体にヒット
                                                 hitSomething = true;
                                                 float rMaterial = getMaterial(rp);
                                                 
-                                                // 反射した先の物体の色を取得
                                                 if (rMaterial < 0.5) { // 地面
-                                                    reflectCol = vec3(0.1); // 暗い地面
+                                                    reflectCol = vec3(0.05); // より暗い地面
                                                 } else if (rMaterial < 2.5) { // 球体
                                                     vec3 cellIndex = floor((rp + 0.5 * vec3(6.0)) / vec3(6.0));
                                                     reflectCol = vec3(
-                                                        0.5 + 0.5 * sin(cellIndex.x * 1.5),
-                                                        0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
-                                                        0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
-                                                    ) * vec3(0.6, 0.8, 1.0) * blink(cellIndex, iTime);
+                                                        0.3 + 0.3 * sin(cellIndex.x * 1.5),
+                                                        0.3 + 0.3 * sin(cellIndex.y * 1.7 + 2.0),
+                                                        0.3 + 0.3 * sin(cellIndex.z * 1.9 + 4.0)
+                                                    ) * vec3(0.4, 0.5, 0.6) * blink(cellIndex, iTime);
                                                 }
                                                 break;
                                             }
@@ -845,53 +842,53 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                             if (reflectT > maxReflectDist)break;
                                         }
                                         
-                                        // 反射しなかった場合は空の色（暗めのグラデーション）
+                                        // 反射しなかった場合は暗めの空の色
                                         if (!hitSomething) {
-                                            float skyGrad = 0.5 + 0.5 * reflectDir.y;
-                                            reflectCol = vec3(0.4, 0.5, 0.6) * skyGrad;
+                                            float skyGrad = 0.3 + 0.3 * reflectDir.y;
+                                            reflectCol = vec3(0.2, 0.25, 0.3) * skyGrad;
                                         }
                                         
                                         // フレネル効果の計算
                                         float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 5.0);
                                         
                                         // 最終的な色の合成
-                                        objColor = mix(objColor, reflectCol, 0.8 + fresnel * 0.2);
+                                        objColor = mix(objColor, reflectCol, 0.6 + fresnel * 0.2);
                                         
-                                        // 鏡面ハイライトの追加
+                                        // 鏡面ハイライトの追加（弱めに）
                                         vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
                                         float specular = pow(max(dot(reflectDir, light), 0.0), 32.0);
-                                        objColor += vec3(1.0) * specular * 0.5;
+                                        objColor += vec3(0.5) * specular * 0.3;
                                     } else { // 未使用
                                         objColor = vec3(1.0);
                                     }
                                     
-                                    // 単純な拡散照明
+                                    // 単純な拡散照明（弱めに）
                                     vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
                                     float diff = max(dot(n, light), 0.0);
                                     
-                                    // 環境光+拡散光
-                                    if (material < 0.5) { // 地面の場合はグリッドラインを強調するため拡散を抑える
-                                        col = objColor * (0.9 + 0.1 * diff);
+                                    // 環境光+拡散光（暗めに）
+                                    if (material < 0.5) { // 地面
+                                        col = objColor * (0.5 + 0.3 * diff);
                                     } else {
-                                        col = objColor * (0.3 + 0.7 * diff);
+                                        col = objColor * (0.2 + 0.4 * diff);
                                     }
                                     
-                                    // ソフトシャドウを計算
-                                    float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 16.0);
+                                    // ソフトシャドウを計算（より強く）
+                                    float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 32.0);
                                     
-                                    // 光源の強度と色
-                                    vec3 lightColor = vec3(1.0, 0.9, 0.8);
+                                    // 光源の強度と色（暗めに）
+                                    vec3 lightColor = vec3(0.6, 0.5, 0.4);
                                     
-                                    // 影を適用（ソフトシャドウ）
-                                    col = col * mix(vec3(0.2), lightColor, shadow);
+                                    // 影を適用（より暗く）
+                                    col = col * mix(vec3(0.1), lightColor, shadow);
                                 } else {
-                                    // 物体に当たらなかった場合はskyboxを表示
-                                    col = getSkyboxPattern(rd, iTime);
+                                    // 物体に当たらなかった場合はskyboxを表示（暗めに）
+                                    col = getSkyboxPattern(rd, iTime) * 0.5;
                                 }
                                 
-                                // 球体の影響を加算（物体に当たった場合のみ）
+                                // 球体の影響を加算（弱めに）
                                 if (t < tmax) {
-                                    col += sphereInfluence;
+                                    col += sphereInfluence * 0.5;
                                 }
                                 
                                 // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
@@ -931,8 +928,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     }
                                 }
                                 
-                                // ガンマ補正
-                                col = pow(col, vec3(0.4545));
+                                // ガンマ補正（より暗く）
+                                col = pow(col, vec3(0.6));
                                 
                                 // Output to screen
                                 fragColor = vec4(col, alpha);
