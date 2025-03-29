@@ -955,69 +955,97 @@ vec3 calcNormal(vec3 p)
             col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * 0.5
             + lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * 0.5;
         } else {
-            // 背景をスクロールするストライプパターンに
-            float stripeWidth = 0.2; // ストライプの幅
+            // カラフルな背景パターン
+            float stripeWidth = 0.2;
             float stripeFreq = 1.0 / stripeWidth;
-            float scrollSpeed = 5.0; // スクロール速度
+            float scrollSpeed = 5.0;
             
             // 複数の方向のスクロールを組み合わせる
             vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed;
             vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7;
             
             // 2つのストライプパターンを生成
-            float pattern1 = step(0.5, fract(dot(rd.xy + scrollDir1 * iTime, vec2(1.0)) * stripeFreq));
-            float pattern2 = step(0.5, fract(dot(rd.xy + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3));
+            float pattern1 = fract(dot(rd.xy + scrollDir1 * iTime, vec2(1.0)) * stripeFreq);
+            float pattern2 = fract(dot(rd.xy + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3);
             
-            // パターンを合成
-            float stripePattern = max(pattern1, pattern2);
-            col = vec3(stripePattern) * 0.15; // 明るさを15%に抑える
-        }
-        
-        // 球体の影響を加算（弱めに）
-        if (t < tmax) {
-            col += sphereInfluence * 0.5;
-        }
-        
-        // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
-        if (SHOW_GRID) {
-            float tGrid = intersectGrid(ro, rd);
-            if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
-                // グリッドとの交差点
-                vec3 gridPos = ro + rd * tGrid;
+            // 時間に基づく色相の変化
+            float hue1 = pattern1 + iTime * 0.1;
+            float hue2 = pattern2 - iTime * 0.15;
+            
+            // HSVからRGBへの変換（1つ目のパターン）
+            vec3 color1 = hsv2rgb(vec3(
+                    fract(hue1),
+                    0.8, // 彩度
+                    0.3 // 明度
+                ));
                 
-                // グリッドの色を取得（カメラからの距離も渡す）
-                vec4 gridResult = drawGrid(gridPos, tGrid);
-                
-                // アルファブレンディング
-                if (gridResult.a > 0.001) {
-                    col = mix(col, gridResult.rgb, gridResult.a);
-                    alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
+                // HSVからRGBへの変換（2つ目のパターン）
+                vec3 color2 = hsv2rgb(vec3(
+                        fract(hue2),
+                        0.7, // 彩度
+                        0.25 // 明度
+                    ));
+                    
+                    // レイの方向に基づいて色を混ぜる
+                    float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
+                    col = mix(color1, color2, mixFactor);
+                    
+                    // 追加のカラーエフェクト
+                    vec3 rainbowEffect = vec3(
+                        sin(rd.y * 3.0 + iTime) * 0.5 + 0.5,
+                        cos(rd.x * 2.0 - iTime * 0.7) * 0.5 + 0.5,
+                        sin((rd.x + rd.y) * 2.5 + iTime * 1.2) * 0.5 + 0.5
+                    );
+                    
+                    // 最終的な色の合成
+                    col = mix(col, rainbowEffect, 0.3);
                 }
+                
+                // 球体の影響を加算（弱めに）
+                if (t < tmax) {
+                    col += sphereInfluence * 0.5;
+                }
+                
+                // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
+                if (SHOW_GRID) {
+                    float tGrid = intersectGrid(ro, rd);
+                    if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
+                        // グリッドとの交差点
+                        vec3 gridPos = ro + rd * tGrid;
+                        
+                        // グリッドの色を取得（カメラからの距離も渡す）
+                        vec4 gridResult = drawGrid(gridPos, tGrid);
+                        
+                        // アルファブレンディング
+                        if (gridResult.a > 0.001) {
+                            col = mix(col, gridResult.rgb, gridResult.a);
+                            alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
+                        }
+                    }
+                    
+                    // Y軸との交差を計算
+                    float tYAxis = intersectYAxis(ro, rd);
+                    if (tYAxis > 0.0 &&(t > tmax || tYAxis < t)) {
+                        // Y軸との交差点
+                        vec3 yAxisPos = ro + rd * tYAxis;
+                        
+                        // Y軸の高さに応じたフェードアウト
+                        float yHeight = abs(yAxisPos.y);
+                        float yFade = 1.0 - clamp(yHeight / 10.0, 0.0, 1.0);
+                        
+                        // Y軸の色（緑）
+                        vec3 yAxisColor = vec3(0.0, 0.7, 0.0) * yFade;
+                        float yAxisAlpha = 0.8 * yFade;
+                        
+                        // アルファブレンディング
+                        col = mix(col, yAxisColor, yAxisAlpha);
+                        alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
+                    }
+                }
+                
+                // ガンマ補正（より暗く）
+                col = pow(col, vec3(0.6));
+                
+                // Output to screen
+                fragColor = vec4(col, alpha);
             }
-            
-            // Y軸との交差を計算
-            float tYAxis = intersectYAxis(ro, rd);
-            if (tYAxis > 0.0 &&(t > tmax || tYAxis < t)) {
-                // Y軸との交差点
-                vec3 yAxisPos = ro + rd * tYAxis;
-                
-                // Y軸の高さに応じたフェードアウト
-                float yHeight = abs(yAxisPos.y);
-                float yFade = 1.0 - clamp(yHeight / 10.0, 0.0, 1.0);
-                
-                // Y軸の色（緑）
-                vec3 yAxisColor = vec3(0.0, 0.7, 0.0) * yFade;
-                float yAxisAlpha = 0.8 * yFade;
-                
-                // アルファブレンディング
-                col = mix(col, yAxisColor, yAxisAlpha);
-                alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
-            }
-        }
-        
-        // ガンマ補正（より暗く）
-        col = pow(col, vec3(0.6));
-        
-        // Output to screen
-        fragColor = vec4(col, alpha);
-    }
