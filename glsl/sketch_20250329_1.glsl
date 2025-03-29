@@ -355,43 +355,58 @@ vec3 getConvulsiveScale(float time) {
 vec3 calculateCameraPosition(float time, int cameraId) {
     float baseRadius = 17.0; // 基本の回転半径
     
+    // フォーカス対象の位置を取得
+    vec3 targetPos;
+    float focusTime = 3.0; // フォーカスの切り替え間隔
+    float focusIndex = floor(time / focusTime);
+    float focusPhase = fract(time / focusTime);
+    
+    // ハッシュ関数を使用してランダムな子球体のインデックスを生成
+    float randomChildIndex = floor(hash(vec3(focusIndex)) * 20.0); // 0-19の範囲
+    float childDelay = 0.15 * (randomChildIndex + 1.0);
+    
+    // フォーカス対象を決定（偶数回は親、奇数回はランダムな子）
+    vec3 parentPos = getFlyingCubePosition(time);
+    vec3 childPos = getChildCubePosition(parentPos, time, childDelay);
+    targetPos = mod(focusIndex, 2.0) < 1.0 ? parentPos : childPos;
+    
     if (cameraId == 0) {
-        // カメラ0: ダイナミックな円運動（より大きな半径と高さ変化）
-        float radius = baseRadius * 1.2;
-        float height = 6.0 + sin(time * 0.4) * 4.0;
-        return vec3(
+        // カメラ0: ターゲットを中心とした円運動
+        float radius = baseRadius * 0.8;
+        float height = 6.0 + sin(time * 0.4) * 2.0;
+        return targetPos + vec3(
             radius * cos(time * -0.3),
             height,
             radius * sin(time * -0.3)
         );
     }
     else if (cameraId == 1) {
-        // カメラ1: 高速スパイラル運動（より複雑な軌道）
+        // カメラ1: ターゲットを中心としたスパイラル
         float t = time * 0.8;
         float spiralRadius = baseRadius * (0.7 + 0.3 * sin(t * 0.5));
-        float heightOffset = 20.0 + sin(t * 0.7) * 8.0;
-        return vec3(
+        float heightOffset = 10.0 + sin(t * 0.7) * 4.0;
+        return targetPos + vec3(
             spiralRadius * cos(t),
             heightOffset,
-            spiralRadius * sin(t * 1.3)// 非対称な動き
+            spiralRadius * sin(t * 1.3)
         );
     }
     else if (cameraId == 2) {
-        // カメラ2: 低い位置からの8の字運動（より極端な視点）
+        // カメラ2: ターゲットを中心とした低い位置からの8の字
         float t = time * 0.4;
-        return vec3(
+        return targetPos + vec3(
             baseRadius * 0.8 * sin(t),
             max(3.0, 4.0 + sin(time * 0.6) * 2.0),
             baseRadius * 0.6 * sin(t * 2.0)
         );
     }
     else {
-        // カメラ3: カオティックな軌道（より予測不可能な動き）
+        // カメラ3: ターゲットを中心としたカオティックな軌道
         float t = time * 0.5;
         float chaosRadius = baseRadius * (1.0 + 0.4 * sin(t * 1.7));
-        return vec3(
+        return targetPos + vec3(
             chaosRadius * sin(t) * cos(t * 0.7),
-            max(5.0, 12.0 + cos(t * 0.9) * 6.0),
+            max(5.0, 8.0 + cos(t * 0.9) * 3.0),
             chaosRadius * cos(t) * sin(t * 0.6)
         );
     }
@@ -753,8 +768,15 @@ vec3 calcNormal(vec3 p)
         // カメラ位置をブレンド
         vec3 ro = mix(ro1, ro2, blend);
         
-        // 注視点をキューブの位置に設定
-        vec3 target = getFlyingCubePosition(iTime);
+        // フォーカス対象の位置を取得
+        float focusTime = 3.0;
+        float focusIndex = floor(iTime / focusTime);
+        float randomChildIndex = floor(hash(vec3(focusIndex)) * 20.0);
+        float childDelay = 0.15 * (randomChildIndex + 1.0);
+        
+        vec3 parentPos = getFlyingCubePosition(iTime);
+        vec3 childPos = getChildCubePosition(parentPos, iTime, childDelay);
+        vec3 target = mod(focusIndex, 2.0) < 1.0 ? parentPos : childPos;
         
         // カメラの向きを計算
         vec3 forward = normalize(target - ro);
@@ -865,7 +887,7 @@ vec3 calcNormal(vec3 p)
                 float spec = pow(max(0.0, r.y), 32.0);
                 
                 // フレネル効果（視線と法線の角度）を計算
-                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
+                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 0.50);
                 
                 // 虹色の生成
                 vec3 rainbow = vec3(
@@ -875,7 +897,7 @@ vec3 calcNormal(vec3 p)
                 );
                 
                 // 縁に虹色を適用
-                objColor = mix(objColor, rainbow, fresnel * 0.8);
+                objColor = mix(objColor, rainbow, fresnel * 4.8);
                 objColor += vec3(spec) * 0.5;
             } else if (material < 3.5) { // 回転する平面
                 // 平面の色を時間とともに変化させる
