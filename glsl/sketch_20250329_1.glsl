@@ -457,84 +457,17 @@ vec2 mapObjects(vec3 p) {
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
-    // 親球体の位置と処理
-    vec3 spherePos = getFlyingCubePosition(localTime);
-    vec3 scaleVec = getConvulsiveScale(localTime);
-    float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0;
-    
-    // 親球体の回転
-    vec3 rotatedP = p - spherePos;
+    // 立方体の位置と回転
+    vec3 cubePos = vec3(0.0);
+    vec3 rotatedP = p - cubePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), localTime) * rotatedP;
     
-    // 親球体の距離計算
-    float sphereDist = sdSphere(rotatedP, sphereRadius);
-    float finalDist = sphereDist;
-    float finalMaterial = 4.0;
+    // 立方体のサイズと距離計算
+    vec3 cubeSize = vec3(3.0);
+    float cubeDist = sdBox(rotatedP, cubeSize);
     
-    // 40個の子オブジェクトを追加
-    const int NUM_CHILDREN = 40;
-    float baseDelay = 0.15;
-    float maxSize = 1.95;
-    float minSize = 0.20;
-    float blendK = 8.0;
-    
-    for(int i = 0; i < NUM_CHILDREN; i ++ ) {
-        float delay = baseDelay * float(i + 1);
-        float t = float(i) / float(NUM_CHILDREN - 1);
-        float size = mix(maxSize, minSize, t);
-        
-        vec3 childPos = getChildCubePosition(spherePos, localTime, delay);
-        vec3 childRotatedP = p - childPos;
-        childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), localTime - delay) * childRotatedP;
-        
-        float childRadius = sphereRadius * size;
-        float childDist;
-        
-        // インデックスが3で割って1余る場合は立方体を使用
-        if (i % 3 == 1) {
-            // 立方体のサイズを球体の半径に基づいて設定
-            vec3 cubeSize = vec3(childRadius * 0.8); // 0.8を掛けて球体より少し小さく
-            childDist = sdBox(childRotatedP, cubeSize);
-            // 立方体の場合は特別なマテリアルIDを設定（5.0以上）
-            if (childDist < finalDist) {
-                finalDist = childDist;
-                finalMaterial = 5.0 + float(i) * 0.045; // 5.0以上のIDを使用
-            }
-        } else if (i % 8 == 7) {
-            // Y軸方向に大きく伸びた立方体を表示
-            vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 44.0, childRadius * 0.6);
-            childDist = sdBox(childRotatedP, elongatedSize);
-            if (childDist < finalDist) {
-                finalDist = childDist;
-                finalMaterial = 5.0 + float(i) * 0.045;
-            }
-        } else if (i % 5 == 1) {
-            // Z軸方向に大きく伸びた立方体を表示
-            vec3 zElongatedSize = vec3(childRadius * 0.8, childRadius * 0.8, childRadius * 88.0);
-            childDist = sdBox(childRotatedP, zElongatedSize);
-            if (childDist < finalDist) {
-                finalDist = childDist;
-                finalMaterial = 5.0 + float(i) * 0.045;
-            }
-        } else {
-            // それ以外は球体を使用
-            childDist = sdSphere(childRotatedP, childRadius);
-            if (childDist < finalDist) {
-                finalDist = childDist;
-                finalMaterial = 4.0 + float(i) * 0.045;
-            }
-        }
-        
-        // スムーズブレンド
-        float blendWeight = 1.0 - t * 0.5;
-        finalDist = smin(finalDist, childDist, blendK * blendWeight);
-        
-        if (childDist < sphereDist) {
-            finalMaterial = 4.1 + float(i) * 0.045;
-        }
-    }
-    
-    return vec2(finalDist, finalMaterial);
+    // 立方体のマテリアルIDを設定（5.0以上）
+    return vec2(cubeDist, 5.0);
 }
 
 // シーンの距離関数
