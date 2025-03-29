@@ -28,10 +28,10 @@ float blink(vec3 cellIndex, float time) {
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
     // 極座標のパラメータ
-    float radius = 5.0; // 回転半径
-    float theta = time * 0.7; // 水平面での角度
-    float phi = time * 0.5; // 垂直方向の角度
-    float height = 5.0; // 基準となる高さ
+    float radius = 12.0; // 回転半径
+    float theta = time * 0.97; // 水平面での角度
+    float phi = time * 0.85; // 垂直方向の角度
+    float height = 5.5; // 基準となる高さ
     
     // 極座標から直交座標への変換
     vec3 basePos = vec3(
@@ -61,6 +61,30 @@ float sdBox(vec3 p, vec3 b) {
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
+// 3x3x3のキューブ群の距離関数
+float sdCubeGrid(vec3 p, vec3 totalSize) {
+    vec3 smallCubeSize = totalSize / 3.0;
+    vec3 cellIndex = floor((p + totalSize * 0.5) / smallCubeSize);
+    vec3 localP = mod(p + totalSize * 0.5, smallCubeSize) - smallCubeSize * 0.5;
+    
+    // 3x3x3の範囲内のセルのみ処理
+    if (any(lessThan(cellIndex, vec3(0.0)))|| any(greaterThanEqual(cellIndex, vec3(3.0)))) {
+        return 1e10;
+    }
+    
+    // 小さなキューブの距離計算
+    float smallCubeDist = sdBox(localP, smallCubeSize * 0.8); // 80%のサイズで隙間を作る
+    return smallCubeDist;
+}
+
+// モーフィング用の距離関数
+float morphDistance(vec3 p, vec3 size, float morphFactor) {
+    float singleCubeDist = sdBox(p, size);
+    float cubeGridDist = sdCubeGrid(p, size * 2.0); // グリッドは少し大きめに
+    
+    return mix(singleCubeDist, cubeGridDist, morphFactor);
+}
+
 /**
 * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
 *
@@ -76,19 +100,21 @@ vec2 mapObjects(vec3 p) {
     
     // 飛び回るキューブの処理
     vec3 cubePos = getFlyingCubePosition(iTime);
-    
-    vec3 cubeSize = vec3(2.0); // キューブのサイズを2倍に
+    vec3 cubeSize = vec3(2.0);
     
     // キューブの回転
     vec3 rotatedP = p - cubePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
-    // キューブの距離計算
-    float cubeDist = sdBox(rotatedP, cubeSize);
+    // モーフィング係数の計算（0.0から1.0の間で周期的に変化）
+    float morphFactor = 0.5 + 0.5 * sin(iTime * 0.5);
+    
+    // キューブの距離計算（モーフィングを適用）
+    float cubeDist = morphDistance(rotatedP, cubeSize, morphFactor);
     
     // キューブの距離と材質IDを更新
     if (cubeDist < res.x) {
-        res = vec2(cubeDist, 4.0); // 材質ID 4.0 を飛び回るキューブに割り当て
+        res = vec2(cubeDist, 4.0);
     }
     
     // レペテーションの設定
