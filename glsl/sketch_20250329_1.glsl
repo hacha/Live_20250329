@@ -379,7 +379,7 @@ vec3 calcNormal(vec3 p) {
     // ナバホ族の幾何学模様を生成する関数
     vec3 navajoPattern(vec2 uv, float time) {
         // スケールの調整（より細かいパターン）
-        uv *= 6.0;
+        uv *= 8.0;
         
         // 時間による緩やかな移動と回転
         float rotation = time * 0.05;
@@ -412,33 +412,31 @@ vec3 calcNormal(vec3 p) {
             cos(time * 0.15) * 0.5 + 0.5
         );
         
-        // ハッシュ関数を使用してランダムな変化を追加
-        float h = hash(vec3(id, time * 0.1));
-        
         // 4色のカラーパレット（より明るい鮮やかな色）
-        vec3 col1 = vec3(1.0, 0.5, 0.3); // 明るいオレンジ
-        vec3 col2 = vec3(0.3, 0.7, 1.0); // 明るいスカイブルー
-        vec3 col3 = vec3(1.0, 0.9, 0.3); // 明るいイエロー
-        vec3 col4 = vec3(0.5, 1.0, 0.5); // 明るいグリーン
+        vec3 col1 = vec3(1.0, 0.3, 0.2); // 赤
+        vec3 col2 = vec3(0.2, 0.5, 1.0); // 青
+        vec3 col3 = vec3(1.0, 0.8, 0.2); // 黄色
+        vec3 col4 = vec3(0.3, 1.0, 0.4); // 緑
         
         // パターンと時間に基づいて色を選択
-        float colorSelect = finalPattern + time * 0.1;
+        float t = mod(finalPattern + time * 0.2, 4.0);
         vec3 color;
-        if (colorSelect < 1.0) {
-            color = mix(col1, col2, colorSelect);
-        } else if (colorSelect < 2.0) {
-            color = mix(col2, col3, colorSelect - 1.0);
-        } else if (colorSelect < 3.0) {
-            color = mix(col3, col4, colorSelect - 2.0);
+        
+        if (t < 1.0) {
+            color = mix(col1, col2, t);
+        } else if (t < 2.0) {
+            color = mix(col2, col3, t - 1.0);
+        } else if (t < 3.0) {
+            color = mix(col3, col4, t - 2.0);
         } else {
-            color = mix(col4, col1, colorSelect - 3.0);
+            color = mix(col4, col1, t - 3.0);
         }
         
-        // パターンの強度に基づいて色を調整（明るさを保持）
-        color = mix(color * 0.7, color, finalPattern);
+        // パターンの強度に基づいて色を調整
+        color = mix(vec3(1.0), color, smoothstep(0.0, 1.0, finalPattern));
         
-        // 全体的な明るさの調整（より明るく）
-        return color * (0.6 + 0.2 * sin(time * 0.2));
+        // 全体的な明るさの調整
+        return color;
     }
     
     // カメラポイントを取得する関数
@@ -522,9 +520,8 @@ vec3 calcNormal(vec3 p) {
         float t = 0.0;
         float tmax = 80.0;
         float epsilon = 0.0002;
-        float nearClip = 0.15; // ニアクリップ距離
+        float nearClip = 0.15;
         
-        // 初期位置をニアクリップ位置に設定
         t = nearClip;
         
         // レイマーチングループ
@@ -537,7 +534,7 @@ vec3 calcNormal(vec3 p) {
         }
         
         // 色を設定
-        vec3 col = vec3(0.0);
+        vec3 col;
         float alpha = 1.0;
         
         // 物体に当たった場合
@@ -611,26 +608,27 @@ vec3 calcNormal(vec3 p) {
             float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0);
             col = col * mix(vec3(0.2), vec3(1.0), shadow);
         } else {
-            // 背景にナバホ族の模様を適用（レイの方向に基づいて）
-            vec2 bgUV = rd.xy / (rd.z * 0.5 + 0.5); // UV座標の計算を調整
-            col = navajoPattern(bgUV, iTime);
+            // 背景のナバホ模様
+            float phi = acos(rd.y);
+            float theta = atan(rd.x, rd.z);
+            vec2 bgUV = vec2(theta / (2.0 * PI) + 0.5, phi / PI);
+            col = navajoPattern(bgUV * 2.0, iTime);
         }
         
-        // ガンマ補正の前にトーンマッピングとカラーグレーディングを適用
+        // トーンマッピングとカラーグレーディング
         col = toneMapping(col);
         col = colorGrading(col);
         
-        // ピクセルグリッチエフェクトの適用
+        // ピクセルグリッチエフェクト
         vec2 glitchUV = fragCoord / iResolution.xy;
         col = pixelGlitch(col, glitchUV, iTime);
         
         // ガンマ補正
-        col = pow(col, vec3(0.6));
+        col = pow(col, vec3(0.4545));
         
-        // ビネット効果の追加
+        // ビネット効果
         vec2 q = fragCoord / iResolution.xy;
-        col *= 0.5 + 0.5 * pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.1);
+        col *= 0.7 + 0.3 * pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.1);
         
-        // 出力
         fragColor = vec4(col, alpha);
     }
