@@ -60,18 +60,35 @@ float blink(vec3 cellIndex, float time) {
 
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
-    // 大きな周回運動のパラメータ
-    float orbitRadius = 25.0; // 大きな周回の半径
-    float orbitSpeed = 0.15; // ゆっくりとした周回速度
-    float orbitHeight = 12.0; // 周回の高さ
+    // 1つ目の大きな周回運動のパラメータ
+    float orbitRadius1 = 25.0; // 大きな周回の半径
+    float orbitSpeed1 = 0.15; // ゆっくりとした周回速度
+    float orbitHeight1 = 12.0; // 周回の高さ
     
-    // 大きな周回運動の計算
-    float orbitTheta = time * orbitSpeed;
-    vec3 orbitCenter = vec3(
-        orbitRadius * cos(orbitTheta),
-        orbitHeight + sin(time * 0.2) * 3.0, // 高さも緩やかに変化
-        orbitRadius * sin(orbitTheta)
+    // 1つ目の大きな周回運動の計算
+    float orbitTheta1 = time * orbitSpeed1;
+    vec3 orbitCenter1 = vec3(
+        orbitRadius1 * cos(orbitTheta1),
+        orbitHeight1 + sin(time * 0.2) * 3.0, // 高さも緩やかに変化
+        orbitRadius1 * sin(orbitTheta1)
     );
+    
+    // 2つ目の大きな周回運動のパラメータ（異なる値を設定）
+    float orbitRadius2 = 35.0; // より大きな半径
+    float orbitSpeed2 = 0.11; // より遅い速度
+    float orbitHeight2 = 18.0; // より高い位置
+    
+    // 2つ目の大きな周回運動の計算（逆方向に回転）
+    float orbitTheta2 = -time * orbitSpeed2; // マイナスで逆回転
+    vec3 orbitCenter2 = vec3(
+        orbitRadius2 * cos(orbitTheta2),
+        orbitHeight2 + sin(time * 0.15) * 4.0, // より大きくゆっくりとした上下動
+        orbitRadius2 * sin(orbitTheta2)
+    );
+    
+    // 2つの周回運動の中心点を補間
+    float blendFactor = sin(time * 0.3) * 0.5 + 0.5; // 0.0-1.0でゆっくり変化
+    vec3 orbitCenter = mix(orbitCenter1, orbitCenter2, blendFactor);
     
     // 基本となる円運動のパラメータ（既存の動き）
     float baseRadius = 12.0;
@@ -101,8 +118,9 @@ vec3 getFlyingCubePosition(float time) {
     float x = radius * (cos(theta1) * 0.6 + cos(theta2) * 0.3 + cos(theta3) * 0.1);
     float z = radius * (sin(theta1) * 0.6 + sin(theta2) * 0.3 + sin(theta3) * 0.1);
     
-    // 局所的な動きを大きな周回運動に加算
-    return orbitCenter + vec3(x, height - orbitHeight, z);
+    // 局所的な動きを補間された周回運動に加算
+    float averageHeight = mix(orbitHeight1, orbitHeight2, blendFactor);
+    return orbitCenter + vec3(x, height - averageHeight, z);
 }
 
 // 回転行列を生成する関数
