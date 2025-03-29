@@ -376,11 +376,12 @@ vec3 calculateCameraPosition(float time, int cameraId) {
     vec3 childPos = getChildCubePosition(parentPos, time, childDelay);
     targetPos = mod(focusIndex, 2.0) < 1.0 ? parentPos : childPos;
     
+    vec3 cameraPos;
     if (cameraId == 0) {
         // カメラ0: ターゲットを中心とした円運動
         float radius = baseRadius * 0.8;
         float height = 6.0 + sin(time * 0.4) * 2.0;
-        return targetPos + vec3(
+        cameraPos = targetPos + vec3(
             radius * cos(time * -0.3),
             height,
             radius * sin(time * -0.3)
@@ -391,7 +392,7 @@ vec3 calculateCameraPosition(float time, int cameraId) {
         float t = time * 0.8;
         float spiralRadius = baseRadius * (0.7 + 0.3 * sin(t * 0.5));
         float heightOffset = 10.0 + sin(t * 0.7) * 4.0;
-        return targetPos + vec3(
+        cameraPos = targetPos + vec3(
             spiralRadius * cos(t),
             heightOffset,
             spiralRadius * sin(t * 1.3)
@@ -400,7 +401,7 @@ vec3 calculateCameraPosition(float time, int cameraId) {
     else if (cameraId == 2) {
         // カメラ2: ターゲットを中心とした低い位置からの8の字
         float t = time * 0.4;
-        return targetPos + vec3(
+        cameraPos = targetPos + vec3(
             baseRadius * 0.8 * sin(t),
             max(3.0, 4.0 + sin(time * 0.6) * 2.0),
             baseRadius * 0.6 * sin(t * 2.0)
@@ -410,12 +411,18 @@ vec3 calculateCameraPosition(float time, int cameraId) {
         // カメラ3: ターゲットを中心としたカオティックな軌道
         float t = time * 0.5;
         float chaosRadius = baseRadius * (1.0 + 0.4 * sin(t * 1.7));
-        return targetPos + vec3(
+        cameraPos = targetPos + vec3(
             chaosRadius * sin(t) * cos(t * 0.7),
             max(5.0, 8.0 + cos(t * 0.9) * 3.0),
             chaosRadius * cos(t) * sin(t * 0.6)
         );
     }
+    
+    // グローバルな上下の揺れを追加
+    float globalYOffset = sin(time * 0.1) * 15.0; // 0.1Hzでゆっくりと15.0の振幅で揺れる
+    cameraPos.y += globalYOffset;
+    
+    return cameraPos;
 }
 
 // 球体のSDF
@@ -430,6 +437,21 @@ float smin(float a, float b, float k) {
 }
 
 vec2 mapObjects(vec3 p) {
+    // X座標の絶対値を取る
+    p.x = abs(p.x);
+    
+    // グリッドサイズの定義
+    vec3 gridSize = vec3(40.0, 40.0, 20.0); // 2x2x1のグリッドのセルサイズ
+    
+    // グリッドに基づいて位置を修正
+    vec3 cellIndex = floor((p + gridSize * 0.5) / gridSize);
+    vec3 localP = mod(p + gridSize * 0.5, gridSize) - gridSize * 0.5;
+    
+    // 2x2x1の範囲内のセルのみ処理
+    if (any(lessThan(cellIndex, vec3(0.0)))|| any(greaterThanEqual(cellIndex, vec3(2.0, 2.0, 1.0)))) {
+        return vec2(1e10, - 1.0);
+    }
+    
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
@@ -439,7 +461,7 @@ vec2 mapObjects(vec3 p) {
     float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0;
     
     // 親球体の回転
-    vec3 rotatedP = p - spherePos;
+    vec3 rotatedP = localP - spherePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
     // 親球体の距離計算
@@ -452,7 +474,7 @@ vec2 mapObjects(vec3 p) {
     float baseDelay = 0.15;
     float maxSize = 0.95;
     float minSize = 0.20;
-    float blendK = 8.0; // ブレンドの強さ（大きいほど滑らか）
+    float blendK = 8.0;
     
     for(int i = 0; i < NUM_CHILDREN; i ++ ) {
         float delay = baseDelay * float(i + 1);
@@ -460,17 +482,16 @@ vec2 mapObjects(vec3 p) {
         float size = mix(maxSize, minSize, t);
         
         vec3 childPos = getChildCubePosition(spherePos, iTime, delay);
-        vec3 childRotatedP = p - childPos;
+        vec3 childRotatedP = localP - childPos;
         childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
         
         float childRadius = sphereRadius * size;
         float childDist = sdSphere(childRotatedP, childRadius);
         
         // スムーズブレンド
-        float blendWeight = 1.0 - t * 0.5; // 大きい球体ほど強く影響
+        float blendWeight = 1.0 - t * 0.5;
         finalDist = smin(finalDist, childDist, blendK * blendWeight);
         
-        // 最も近い球体のマテリアルIDを使用
         if (childDist < sphereDist) {
             finalMaterial = 4.1 + float(i) * 0.045;
         }
@@ -660,84 +681,6 @@ vec3 calcNormal(vec3 p)
         return mat2(c, - s, s, c);
     }
     
-    // 不穏なskyboxパターンを生成する関数
-    vec3 getSkyboxPattern(vec3 rd, float time) {
-        // 基本となる方向ベクトルを時間とともにゆっくり回転
-        vec3 dir = rd;
-        
-        // 大きな歪みエフェクトを追加
-        float distortionScale = 0.8; // 歪みの大きさ
-        float distortionSpeed = 0.3; // 歪みの速さ
-        
-        // 大きなノイズによる歪み
-        vec3 distortion1 = vec3(
-            smoothNoise(dir * 0.5 + vec3(time * 0.2)),
-            smoothNoise(dir * 0.5 + vec3(time * 0.15 + 42.0)),
-            smoothNoise(dir * 0.5 + vec3(time * 0.25 + 123.0))
-        ) * 2.0 - 1.0; // -1から1の範囲に
-        
-        // より大きなスケールの歪み
-        vec3 distortion2 = vec3(
-            smoothNoise(dir * 0.2 + vec3(time * 0.1)),
-            smoothNoise(dir * 0.2 + vec3(time * 0.12 + 42.0)),
-            smoothNoise(dir * 0.2 + vec3(time * 0.08 + 123.0))
-        ) * 2.0 - 1.0;
-        
-        // 歪みを合成
-        vec3 finalDistortion = distortion1 * 0.6 + distortion2 * 0.4;
-        
-        // 方向ベクトルを歪ませる
-        dir += finalDistortion * distortionScale;
-        dir = normalize(dir); // 正規化が重要
-        
-        // 通常の回転も適用（より遅く）
-        dir.xy *= rot2D(sin(time * 0.1) * 0.2);
-        dir.yz *= rot2D(cos(time * 0.08) * 0.15);
-        dir.xz *= rot2D(sin(time * 0.12) * 0.18);
-        
-        // 深い宇宙の背景色
-        vec3 baseColor = vec3(0.02, 0.01, 0.04); // 非常に暗い青紫
-        
-        // 星雲のノイズパターン（より大きなスケール）
-        float n1 = smoothNoise(dir * 0.8 + vec3(time * 0.02));
-        float n2 = smoothNoise(dir * 1.5 - vec3(time * 0.015));
-        float n3 = smoothNoise(dir * 2.2 + vec3(time * 0.025));
-        
-        // 星雲の色（より強く）
-        vec3 nebula1 = vec3(0.4, 0.1, 0.6) * smoothstep(0.3, 0.7, n1); // 紫の星雲
-        vec3 nebula2 = vec3(0.1, 0.3, 0.6) * smoothstep(0.3, 0.7, n2); // 青い星雲
-        vec3 nebula3 = vec3(0.6, 0.2, 0.3) * smoothstep(0.4, 0.8, n3); // 赤い星雲
-        
-        // 歪んだ空間での星のパターン生成
-        float stars = 0.0;
-        for(int i = 0; i < 3; i ++ ) {
-            vec3 starDir = dir * float(i + 1) * 15.0;
-            float starNoise = smoothNoise(starDir + finalDistortion);
-            stars += step(0.97, starNoise) * (1.0 - float(i) * 0.2);
-        }
-        
-        // 明るい星（歪みの影響を受ける）
-        float brightStars = step(0.992, smoothNoise(dir * 40.0 + finalDistortion * 0.5));
-        
-        // 星の瞬き効果（より激しく）
-        float twinkle = sin(time * 4.0 + stars * 15.0) * 0.5 + 0.5;
-        
-        // すべての要素を組み合わせる
-        vec3 finalColor = baseColor;
-        finalColor += nebula1 * 0.4;
-        finalColor += nebula2 * 0.3;
-        finalColor += nebula3 * 0.25;
-        finalColor += vec3(1.0) * stars * 0.9 * twinkle; // 通常の星
-        finalColor += vec3(1.0, 0.95, 0.8) * brightStars * 1.8; // 明るい星
-        
-        // 銀河の中心部のような明るい領域（歪みの影響を受ける）
-        float galaxyCore = smoothstep(0.92, 0.98, sin(atan(dir.x + finalDistortion.x, dir.z + finalDistortion.z) * 2.0 +
-        cos((dir.y + finalDistortion.y) * 3.0)));
-        finalColor += vec3(0.4, 0.2, 0.6) * galaxyCore * 0.4;
-        
-        return finalColor;
-    }
-    
     // 1つ目のPointLightの位置を計算する関数
     vec3 getPointLightPosition(float time) {
         // 基本となる円運動のパラメータ
@@ -822,13 +765,36 @@ vec3 calcNormal(vec3 p)
         vec3 childPos = getChildCubePosition(parentPos, iTime, childDelay);
         vec3 target = mod(focusIndex, 2.0) < 1.0 ? parentPos : childPos;
         
-        // カメラの向きを計算
-        vec3 forward = normalize(target - ro);
+        // 注視点にゆっくりとした揺れを追加
+        vec3 wobble = vec3(
+            sin(iTime * 0.3) * cos(iTime * 0.2),
+            sin(iTime * 0.25) * 0.5,
+            cos(iTime * 0.35) * sin(iTime * 0.15)
+        ) * 0.8; // 揺れの大きさを0.8に設定
+        
+        // 揺れを適用した注視点を使用
+        vec3 wobbledTarget = target + wobble;
+        
+        // カメラの向きを計算（揺れを含む）
+        vec3 forward = normalize(wobbledTarget - ro);
         vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
         vec3 up = cross(forward, right);
         
-        // レイの方向を計算
-        vec3 rd = normalize(forward + right * uv.x + up * uv.y);
+        // フィッシュアイレンズ効果の実装
+        float baseStrength = 11.5;
+        float rhythmSpeed = 14.0; // リズムの速さ
+        float rhythmRange = 2.0; // 変化の幅
+        
+        // 複数の周波数を組み合わせてリズミカルな動きを作成
+        float rhythm1 = sin(iTime * rhythmSpeed) * 0.5;
+        float rhythm2 = sin(iTime * rhythmSpeed * 1.5 + 1.57) * 0.3;
+        float rhythm3 = sin(iTime * rhythmSpeed * 0.7 - 0.5) * 0.2;
+        
+        float fishEyeStrength = baseStrength + (rhythm1 + rhythm2 + rhythm3) * rhythmRange;
+        vec2 fishEyeUV = uv * (1.0 + fishEyeStrength * length(uv));
+        
+        // レイの方向を計算（フィッシュアイ効果を適用）
+        vec3 rd = normalize(forward + right * fishEyeUV.x + up * fishEyeUV.y);
         
         // レイマーチング
         float t = 0.0;
@@ -951,9 +917,9 @@ vec3 calcNormal(vec3 p)
                     0.5 + 0.5 * sin(iTime * 1.1 + PI)
                 ) * 0.3; // 暗めに設定
                 
-                // 反射効果を追加
+                // 反射効果を追加（skyboxの代わりに暗い色を使用）
                 vec3 reflectDir = reflect(rd, n);
-                vec3 reflectCol = getSkyboxPattern(reflectDir, iTime);
+                vec3 reflectCol = vec3(0.05); // 非常に暗い反射
                 float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
                 objColor = mix(objColor, reflectCol, 0.5 + fresnel * 0.3);
                 
@@ -989,8 +955,22 @@ vec3 calcNormal(vec3 p)
             col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * 0.5
             + lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * 0.5;
         } else {
-            // 背景色（簡略化）
-            col = getSkyboxPattern(rd, iTime) * 0.3;
+            // 背景をスクロールするストライプパターンに
+            float stripeWidth = 0.2; // ストライプの幅
+            float stripeFreq = 1.0 / stripeWidth;
+            float scrollSpeed = 5.0; // スクロール速度
+            
+            // 複数の方向のスクロールを組み合わせる
+            vec2 scrollDir1 = vec2(cos(iTime * 0.7), sin(iTime * 0.9)) * scrollSpeed;
+            vec2 scrollDir2 = vec2(sin(iTime * 1.1), cos(iTime * 0.8)) * scrollSpeed * 0.7;
+            
+            // 2つのストライプパターンを生成
+            float pattern1 = step(0.5, fract(dot(rd.xy + scrollDir1 * iTime, vec2(1.0)) * stripeFreq));
+            float pattern2 = step(0.5, fract(dot(rd.xy + scrollDir2 * iTime, vec2(1.0)) * stripeFreq * 1.3));
+            
+            // パターンを合成
+            float stripePattern = max(pattern1, pattern2);
+            col = vec3(stripePattern) * 0.15; // 明るさを15%に抑える
         }
         
         // 球体の影響を加算（弱めに）
