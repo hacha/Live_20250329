@@ -129,13 +129,13 @@ vec2 mapObjects(vec3 p) {
     step(0.0, sin(checkerP.y) * sin(checkerP.z)) *
     step(0.0, sin(checkerP.z) * sin(checkerP.x));
     
-    // 立方体のサイズと距離計算
-    vec3 cubeSize = vec3(3.0);
+    // 立方体のサイズと距離計算（0.7倍に縮小）
+    vec3 cubeSize = vec3(2.1); // 3.0 * 0.7
     float cubeDist = sdBox(rotatedP, cubeSize);
     
-    // 白いチェッカー部分に球体を配置
-    float sphereRadius = 0.15;
-    float sphereOffset = 0.2;
+    // 白いチェッカー部分に球体を配置（サイズも0.7倍に）
+    float sphereRadius = 0.105; // 0.15 * 0.7
+    float sphereOffset = 0.14; // 0.2 * 0.7
     float sphereDist = 1e10;
     
     if (checker > 0.5) {
@@ -146,13 +146,13 @@ vec2 mapObjects(vec3 p) {
         sphereDist = sdSphere(spherePos, sphereRadius);
         
         // 球体と立方体の距離をスムーズに結合
-        float k = 0.1; // ブレンド係数
+        float k = 0.07; // ブレンド係数も0.7倍
         cubeDist = smin(cubeDist, sphereDist, k);
     }
     
     // FBMディスプレイスメントとチェッカーパターンの組み合わせ
     float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0);
-    float displacement = fbm(rotatedP * 1.5 + iTime * timeFactor) * 0.95;
+    float displacement = fbm(rotatedP * 1.5 + iTime * timeFactor) * 0.665; // 0.95 * 0.7
     displacement *= mix(0.8, 1.2, checker);
     
     cubeDist -= displacement;
