@@ -68,21 +68,22 @@ vec2 mapObjects(vec3 p) {
         pyramidP.y -= pyramidHeight * 0.5; // 中心を基準に配置
         
         // 三角錐の距離計算
-        vec3 a = normalize(vec3(0.0, pyramidHeight, 0.0));
-        vec3 b = normalize(vec3(pyramidBase, 0.0, 0.0));
-        vec3 c = normalize(vec3(0.0, 0.0, pyramidBase));
-        vec3 n = normalize(cross(b, c));
+        float h = pyramidHeight;
+        float r = pyramidBase;
         
-        objDist = max(
-            dot(pyramidP, n),
-            max(
-                dot(pyramidP, cross(a, b)),
-                max(
-                    dot(pyramidP, cross(b, c)),
-                    dot(pyramidP, cross(c, a))
-                )
-            )
-        );
+        // 三角錐の先端までの距離
+        vec2 q = vec2(length(pyramidP.xz), pyramidP.y);
+        
+        // 三角錐の側面の角度
+        vec2 w = vec2(r, h);
+        q.x = abs(q.x);
+        vec2 a = q - w * clamp(dot(q, w) / dot(w, w), 0.0, 1.0);
+        vec2 b = q - w * vec2(clamp(q.x / w.x, 0.0, 1.0), 1.0);
+        float s = -sign(q.y);
+        vec2 d = min(vec2(dot(a, a), s * (q.y * w.x - q.x * w.y)),
+        vec2(dot(b, b), s * (q.y - w.y)));
+        
+        objDist = -sqrt(d.x) * sign(d.y);
     } else {
         // 球体の距離計算
         objDist = length(localP) - sphereRadius;
