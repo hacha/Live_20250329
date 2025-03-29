@@ -590,8 +590,8 @@ vec3 calcNormal(vec3 p) {
                 // 球体の色（金属的な光沢）
                 baseColor = vec3(0.8, 0.7, 0.5);
             } else {
-                // チェッカーパターンの色
-                baseColor = (material > 5.5) ? vec3(0.9, 0.9, 0.9) : vec3(0.2, 0.2, 0.2);
+                // チェッカーパターンの色（白い部分をより発光させる）
+                baseColor = (material > 5.5) ? vec3(2.5, 2.5, 2.5) : vec3(0.2, 0.2, 0.2);
             }
             
             // 基本の光源方向
@@ -638,9 +638,10 @@ vec3 calcNormal(vec3 p) {
             float mixFactor = smoothstep(-0.5, 0.5, dot(rd.xy, vec2(cos(iTime * 0.3), sin(iTime * 0.4))));
             vec3 objColor = mix(color1, color2, mixFactor) * baseColor;
             
-            // フレネル効果の強化（球体用）
+            // フレネル効果の強化（球体とチェッカーの白い部分）
             float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), material > 6.5 ? 5.0 : 3.0);
-            objColor *= material > 6.5 ? (0.6 + fresnel * 0.8) : (0.8 + fresnel * 0.4);
+            objColor *= material > 6.5 ? (0.6 + fresnel * 0.8) :
+            (material > 5.5 ? (1.2 + fresnel * 0.8) : (0.8 + fresnel * 0.4));
             
             // ライティング計算
             col = objColor * (0.2 + 0.4 * baseDiff);
