@@ -27,12 +27,19 @@ float blink(vec3 cellIndex, float time) {
 
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
-    // リサージュ曲線で複雑な動きを生成
-    return vec3(
+    // 基本的な動きを計算
+    vec3 basePos = vec3(
         5.0 * sin(time * 0.7),
         3.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
+    
+    // XZ平面でのフォールディング
+    float foldSize = 8.0; // フォールディングの範囲
+    basePos.x = abs(mod(basePos.x + foldSize, 2.0 * foldSize) - foldSize) - foldSize * 0.5;
+    basePos.z = abs(mod(basePos.z + foldSize, 2.0 * foldSize) - foldSize) - foldSize * 0.5;
+    
+    return basePos;
 }
 
 // 回転行列を生成する関数
