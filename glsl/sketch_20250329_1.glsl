@@ -110,10 +110,16 @@ vec2 mapObjects(vec3 p) {
     
     // 球体の距離計算
     float sphereRadius = 0.6;
-    float objDist = length(localP) - sphereRadius;
     
     // キューブとの距離を計算
     float distToCube = length(p - cubePos) - 2.0; // キューブのサイズを考慮
+    
+    // キューブに近い場合、球体を縮小
+    float shrinkRange = 4.0; // 縮小が始まる距離
+    float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
+    float dynamicRadius = sphereRadius * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
+    
+    float objDist = length(localP) - dynamicRadius;
     
     // キューブに近い場合、球体を変形
     float cubeInfluenceRange = 5.0; // 変形が始まる距離
