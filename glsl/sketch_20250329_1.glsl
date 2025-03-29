@@ -48,10 +48,15 @@ vec2 mapObjects(vec3 p) {
     
     // 球体の位置
     vec3 spherePos = vec3(0.0, 1.0, 0.0);
+    // グリッドごとに異なる上下運動を追加
+    float wobbleSpeed = dot(cellIndex, vec3(0.7, 0.9, 1.1)); // グリッドごとに異なる速度
+    float wobbleRange = 0.5; // 上下の振幅
+    spherePos.y += wobbleRange * sin(iTime * 0.5 + wobbleSpeed); // ゆっくりとした上下運動
+    
     vec3 localP = q - spherePos;
     
     // 球体の半径
-    float sphereRadius = 1.0;
+    float sphereRadius = 0.6;
     float sphereDist = length(localP) - sphereRadius;
     
     // 球体の距離と材質IDを更新
