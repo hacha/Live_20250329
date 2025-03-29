@@ -367,7 +367,7 @@ vec3 calculateCameraPosition(float time, int cameraId) {
             hash(vec3(focusIndex)),
             hash(vec3(focusIndex + 1.0)),
             smoothstep(2.0, 2.8, mod(time, focusTime))// 切り替え前に次の子球体を選択
-        ) * 20.0
+        ) * 40.0
     );
     float childDelay = 0.15 * (randomChildIndex + 1.0);
     
@@ -458,8 +458,8 @@ vec2 mapObjects(vec3 p) {
     float finalDist = sphereDist;
     float finalMaterial = 4.0;
     
-    // 20個の子オブジェクトを追加
-    const int NUM_CHILDREN = 20;
+    // 40個の子オブジェクトを追加
+    const int NUM_CHILDREN = 40;
     float baseDelay = 0.15;
     float maxSize = 0.95;
     float minSize = 0.20;
@@ -484,7 +484,7 @@ vec2 mapObjects(vec3 p) {
             childDist = sdBox(childRotatedP, cubeSize);
         } else if (i % 9 == 8) {
             // Y軸方向に大きく伸びた立方体を表示
-            vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 4.0, childRadius * 0.6);
+            vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 44.0, childRadius * 0.6);
             childDist = sdBox(childRotatedP, elongatedSize);
         } else {
             // それ以外は球体を使用
@@ -763,7 +763,7 @@ vec3 calcNormal(vec3 p)
                 hash(vec3(focusIndex)),
                 hash(vec3(focusIndex + 1.0)),
                 smoothstep(2.0, 2.8, mod(iTime, focusTime))// 切り替え前に次の子球体を選択
-            ) * 20.0
+            ) * 40.0
         );
         float childDelay = 0.15 * (randomChildIndex + 1.0);
         
@@ -787,7 +787,7 @@ vec3 calcNormal(vec3 p)
         vec3 up = cross(forward, right);
         
         // フィッシュアイレンズ効果の実装
-        float baseStrength = 11.5;
+        float baseStrength = 15.5;
         float rhythmSpeed = 14.0; // リズムの速さ
         float rhythmRange = 2.0; // 変化の幅
         
