@@ -94,6 +94,17 @@ float sdBox(vec3 p, vec3 b) {
     return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
 }
 
+// インデックスが奇数かどうかをチェックする関数
+bool isOddIndex(vec3 cellIndex) {
+    // 各成分が奇数かどうかをチェック
+    bool isXOdd = mod(abs(cellIndex.x), 2.0) >= 1.0;
+    bool isYOdd = mod(abs(cellIndex.y), 2.0) >= 1.0;
+    bool isZOdd = mod(abs(cellIndex.z), 2.0) >= 1.0;
+    
+    // いずれかの成分が奇数ならtrue
+    return isXOdd || isYOdd || isZOdd;
+}
+
 // 3x3x3のキューブ群の距離関数
 float sdCubeGrid(vec3 p, vec3 totalSize) {
     vec3 smallCubeSize = totalSize / 3.5;
@@ -232,6 +243,11 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
             
             // キューブの色を計算する関数
             vec3 getCubeColor(vec3 cellIndex, float time) {
+                // インデックスが奇数の場合は黒（非表示）を返す
+                if (isOddIndex(cellIndex)) {
+                    return vec3(0.0);
+                }
+                
                 float noiseScale = 0.3; // ノイズのスケール（小さいほど滑らか）
                 
                 // 各色成分に異なるオフセットを使用してノイズを生成
@@ -303,16 +319,12 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         float morphTime = mod(iTime * 0.2, 4.0); // 4秒周期でゆっくり変化
                         float morphFactor;
                         if (morphTime < 1.0) {
-                            // 単一キューブの状態で停止
                             morphFactor = 0.0;
                         } else if (morphTime < 2.0) {
-                            // 単一キューブから3x3x3への遷移
                             morphFactor = smoothstep(0.0, 1.0, morphTime - 1.0);
                         } else if (morphTime < 3.0) {
-                            // 3x3x3の状態で停止
                             morphFactor = 1.0;
                         } else {
-                            // 3x3x3から単一キューブへの遷移
                             morphFactor = 1.0 - smoothstep(0.0, 1.0, morphTime - 3.0);
                         }
                         
@@ -332,67 +344,56 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // オリジナルの位置を保存（マテリアルIDの変更に使用）
                         vec3 cellIndex = floor((p + 0.5 * repetition) / repetition);
                         
-                        // 球体の位置
-                        vec3 spherePos = vec3(0.0, 1.0, 0.0);
-                        // グリッドごとに異なる上下運動を追加
-                        float wobbleSpeed = dot(cellIndex, vec3(0.7, 0.9, 1.1)); // グリッドごとに異なる速度
-                        float wobbleRange = 0.75; // 上下の振幅
-                        spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed); // ゆっくりとした上下運動
-                        
-                        // グリッドごとのxz方向のずれを計算
-                        float noiseScale = 0.5; // ノイズのスケール
-                        float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * spacing;
-                        float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * spacing;
-                        spherePos.x += offsetX;
-                        spherePos.z += offsetZ;
-                        
-                        vec3 localP = q - spherePos;
-                        
-                        // キューブの回転パラメータを取得
-                        vec4 rotationParams = getRotationParams(cellIndex, iTime);
-                        vec3 rotationAxis = rotationParams.xyz;
-                        float rotationAngle = rotationParams.w;
-                        
-                        // 回転を適用
-                        vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
-                        
-                        // キューブの距離計算
-                        vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
-                        float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
-                        
-                        // キューブとの距離を計算
-                        float distToCube = length(p - cubePos) - 2.0; // メインのキューブとの距離
-                        
-                        // キューブに近い場合、グリッドのキューブを縮小
-                        float shrinkRange = 4.0; // 縮小が始まる距離
-                        float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
-                        vec3 dynamicSize = gridCubeDims * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
-                        
-                        localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
-                        
-                        // 地面からの距離に応じたスムージング
-                        float groundDistance = spherePos.y;
-                        float smoothRange = 1.2;
-                        float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-                        localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
-                        
-                        // キューブの色を取得
-                        vec3 cubeColor = getCubeColor(cellIndex, iTime);
-                        
-                        // 点滅効果を適用
-                        float blinkFactor = blink(cellIndex, iTime);
-                        cubeColor *= blinkFactor;
-                        
-                        // 距離に基づいて影響を計算
-                        float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
-                        influence *= 0.1; // 影響の強さを調整
-                        
-                        // 影響を蓄積
-                        vec3 sphereInfluence = cubeColor * influence;
-                        
-                        // キューブの距離と材質IDを更新
-                        if (localGridCubeDist < res.x) {
-                            res = vec2(localGridCubeDist, 2.0);
+                        // インデックスが奇数の場合はスキップ
+                        if (!isOddIndex(cellIndex)) {
+                            // 球体の位置
+                            vec3 spherePos = vec3(0.0, 1.0, 0.0);
+                            // グリッドごとに異なる上下運動を追加
+                            float wobbleSpeed = dot(cellIndex, vec3(0.7, 0.9, 1.1));
+                            float wobbleRange = 0.75;
+                            spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed);
+                            
+                            // グリッドごとのxz方向のずれを計算
+                            float noiseScale = 0.5;
+                            float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * spacing;
+                            float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * spacing;
+                            spherePos.x += offsetX;
+                            spherePos.z += offsetZ;
+                            
+                            vec3 localP = q - spherePos;
+                            
+                            // キューブの回転パラメータを取得
+                            vec4 rotationParams = getRotationParams(cellIndex, iTime);
+                            vec3 rotationAxis = rotationParams.xyz;
+                            float rotationAngle = rotationParams.w;
+                            
+                            // 回転を適用
+                            vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
+                            
+                            // キューブの距離計算
+                            vec3 gridCubeDims = vec3(0.5);
+                            float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
+                            
+                            // キューブとの距離を計算
+                            float distToCube = length(p - cubePos) - 2.0;
+                            
+                            // キューブに近い場合、グリッドのキューブを縮小
+                            float shrinkRange = 4.0;
+                            float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
+                            vec3 dynamicSize = gridCubeDims * mix(0.2, 1.0, shrinkFactor);
+                            
+                            localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
+                            
+                            // 地面からの距離に応じたスムージング
+                            float groundDistance = spherePos.y;
+                            float smoothRange = 1.2;
+                            float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
+                            localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
+                            
+                            // キューブの距離と材質IDを更新
+                            if (localGridCubeDist < res.x) {
+                                res = vec2(localGridCubeDist, 2.0);
+                            }
                         }
                         
                         // 地面（平面）
