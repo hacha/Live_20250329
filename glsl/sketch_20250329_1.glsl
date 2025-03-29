@@ -437,13 +437,11 @@ float smin(float a, float b, float k) {
 }
 
 vec2 mapObjects(vec3 p) {
-    // X座標とZ座標の絶対値を取る
-    p.x = abs(p.x);
-    p.z = abs(p.z);
-    
-    // Y座標の絶対値をスムーズに処理
+    // X、Y、Z座標すべてをスムーズに処理
     float smoothK = 1.0; // スムーズさの制御パラメータ
+    p.x = smin(p.x, - p.x, smoothK);
     p.y = smin(p.y, - p.y, smoothK);
+    p.z = smin(p.z, - p.z, smoothK);
     
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
