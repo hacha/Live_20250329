@@ -437,8 +437,9 @@ float smin(float a, float b, float k) {
 }
 
 vec2 mapObjects(vec3 p) {
-    // X座標の絶対値を取る
+    // X座標とZ座標の絶対値を取る
     p.x = abs(p.x);
+    p.z = abs(p.z);
     
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
