@@ -75,7 +75,7 @@ vec2 mapObjects(vec3 p) {
     
     // 飛び回るキューブの処理
     vec3 cubePos = getFlyingCubePosition(iTime);
-    vec3 cubeSize = vec3(0.5); // キューブのサイズ
+    vec3 cubeSize = vec3(1.0); // キューブのサイズを2倍に
     
     // キューブの回転
     vec3 rotatedP = p - cubePos;
