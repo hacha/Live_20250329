@@ -568,6 +568,50 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             ));
                         }
                         
+                        // 2D回転行列を適用する関数
+                        mat2 rot2D(float angle) {
+                            float s = sin(angle);
+                            float c = cos(angle);
+                            return mat2(c, - s, s, c);
+                        }
+                        
+                        // 不穏なskyboxパターンを生成する関数
+                        vec3 getSkyboxPattern(vec3 rd, float time) {
+                            // 基本となる方向ベクトルを時間とともに歪ませる
+                            vec3 dir = rd;
+                            dir.xy *= rot2D(sin(time * 0.1) * 0.2);
+                            dir.yz *= rot2D(cos(time * 0.15) * 0.3);
+                            
+                            // 複数のノイズレイヤーを合成
+                            float n1 = smoothNoise(dir * 2.0 + vec3(time * 0.1));
+                            float n2 = smoothNoise(dir * 4.0 - vec3(time * 0.15));
+                            float n3 = smoothNoise(dir * 8.0 + vec3(time * 0.2));
+                            
+                            // 歪んだノイズパターン
+                            float pattern = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
+                            
+                            // 不穏な色の設定
+                            vec3 color1 = vec3(0.1, 0.02, 0.15); // 暗い紫
+                            vec3 color2 = vec3(0.3, 0.05, 0.05); // 暗い赤
+                            vec3 color3 = vec3(0.02, 0.1, 0.15); // 暗い青
+                            
+                            // パターンに基づいて色を混ぜる
+                            vec3 finalColor = mix(color1, color2, pattern);
+                            finalColor = mix(finalColor, color3, smoothNoise(dir * 3.0 + vec3(time * 0.13)));
+                            
+                            // 渦を追加
+                            vec2 vortex = vec2(
+                                sin(atan(dir.z, dir.x) * 3.0 + time),
+                                cos(atan(dir.y, length(dir.xz)) * 2.0 - time)
+                            );
+                            float vortexPattern = smoothNoise(vec3(vortex * 2.0, time * 0.1)) * 0.3;
+                            
+                            // 最終的な色を合成
+                            finalColor += vec3(0.1, 0.02, 0.15) * vortexPattern;
+                            
+                            return finalColor;
+                        }
+                        
                         void mainImage(out vec4 fragColor, in vec2 fragCoord)
                         {
                             // Normalized pixel coordinates (from 0 to 1)
@@ -664,12 +708,11 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             }
                             
                             // 色を設定
-                            vec3 col = vec3(0.0); // 背景色（真っ黒）
-                            float alpha = 0.0; // デフォルトで透明に設定
+                            vec3 col = vec3(0.0);
+                            float alpha = 1.0; // skyboxは常に不透明
                             
                             // 物体に当たった場合
                             if (t < tmax) {
-                                alpha = 1.0; // 物体に当たった場合のみ不透明に
                                 vec3 p = ro + rd * t;
                                 vec3 n = calcNormal(p);
                                 float material = getMaterial(p);
@@ -778,10 +821,15 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 
                                 // 影を適用（ソフトシャドウ）
                                 col = col * mix(vec3(0.2), lightColor, shadow);
+                            } else {
+                                // 物体に当たらなかった場合はskyboxを表示
+                                col = getSkyboxPattern(rd, iTime);
                             }
                             
                             // 球体の影響を加算（物体に当たった場合のみ）
-                            col += sphereInfluence;
+                            if (t < tmax) {
+                                col += sphereInfluence;
+                            }
                             
                             // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
                             if (SHOW_GRID) {
