@@ -801,7 +801,7 @@ vec3 calcNormal(vec3 p)
             
             // 1つ目のPointLightの位置と効果
             vec3 lightPos1 = getPointLightPosition(iTime);
-            vec3 lightColor1 = vec3(1.0, 0.9, 0.8) * 2.0;
+            vec3 lightColor1 = vec3(1.0, 0.0, 0.0) * 2.5; // 純粋な赤色、より強く
             float lightIntensity1 = 5.0;
             
             vec3 lightDir1 = normalize(lightPos1 - p);
@@ -810,7 +810,7 @@ vec3 calcNormal(vec3 p)
             
             // 2つ目のPointLight（高速バージョン）の位置と効果
             vec3 lightPos2 = getSpeedyLightPosition(iTime);
-            vec3 lightColor2 = vec3(0.8, 1.0, 0.9) * 1.5; // より弱い青みがかった光
+            vec3 lightColor2 = vec3(0.0, 0.0, 1.0) * 2.5; // 純粋な青色、より強く
             float baseIntensity2 = 2.0; // 基本強度を弱めに
             
             // 高速な明滅効果（複数の周期を組み合わせる）
