@@ -715,16 +715,19 @@ vec3 calcNormal(vec3 p)
     {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
-        // カメラの切り替え時間を設定
-        float switchDuration = 5.0; // 各カメラの持続時間
-        float blendDuration = 1.0; // ブレンド時間
+        // カメラの切り替え時間を対数スケールで設定
+        float baseTime = 5.0; // 基準時間
+        float logBase = 1.5; // 対数の底
+        float switchDuration = baseTime * log(1.0 + mod(iTime, 10.0)) / log(logBase);
+        float blendDuration = switchDuration * 0.2; // ブレンド時間は切り替え時間の20%
         
-        // 現在のカメラIDを計算
-        float totalTime = mod(iTime, switchDuration * 4.0); // 4つのカメラでループ
+        // 現在のカメラIDを計算（4つのカメラでループ）
+        float logTime = log(1.0 + mod(iTime, 40.0)) / log(logBase); // より長いサイクルで対数時間を計算
+        float totalTime = mod(logTime * baseTime, switchDuration * 4.0);
         int currentCam = int(totalTime / switchDuration);
         int nextCam = (currentCam + 1)% 4;
         
-        // ブレンド係数を計算
+        // ブレンド係数を計算（対数スケールを考慮）
         float camTime = mod(totalTime, switchDuration);
         float blend = smoothstep(switchDuration - blendDuration, switchDuration, camTime);
         
