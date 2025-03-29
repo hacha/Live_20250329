@@ -363,6 +363,29 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         return parentPos + diff * stretchFactor;
                     }
                     
+                    // キューブの痙攣的な拡縮を計算する関数
+                    vec3 getConvulsiveScale(float time) {
+                        // 複数の高周波ノイズを合成
+                        float n1 = smoothNoise(vec3(time * 8.0, 0.0, 0.0)); // 8Hz
+                        float n2 = smoothNoise(vec3(time * 12.0, 1.0, 0.0)); // 12Hz
+                        float n3 = smoothNoise(vec3(time * 15.0, 2.0, 0.0)); // 15Hz
+                        float n4 = smoothNoise(vec3(time * 20.0, 3.0, 0.0)); // 20Hz
+                        
+                        // 急激な変化のためのステップ関数
+                        float s1 = step(0.5, n1) * 0.3;
+                        float s2 = step(0.6, n2) * 0.2;
+                        float s3 = step(0.4, n3) * 0.25;
+                        float s4 = step(0.55, n4) * 0.15;
+                        
+                        // 基本スケール（2.0）に不規則な変動を加える
+                        float baseScale = 2.0;
+                        float xScale = baseScale * (1.0 + s1 + s2 - s3 + s4);
+                        float yScale = baseScale * (1.0 - s2 + s3 + s1 - s4);
+                        float zScale = baseScale * (1.0 + s3 - s1 + s4 - s2);
+                        
+                        return vec3(xScale, yScale, zScale);
+                    }
+                    
                     /**
                     * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
                     *
@@ -384,7 +407,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         
                         // 親キューブの位置と処理
                         vec3 cubePos = getFlyingCubePosition(iTime);
-                        vec3 cubeSize = vec3(2.0);
+                        vec3 cubeSize = getConvulsiveScale(iTime); // 痙攣的な拡縮を適用
                         
                         // 親キューブの回転
                         vec3 rotatedP = p - cubePos;
