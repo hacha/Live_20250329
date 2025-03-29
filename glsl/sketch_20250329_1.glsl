@@ -336,31 +336,45 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             res = vec2(cubeDist, 4.0);
                         }
                         
-                        // レペテーションの設定
-                        float spacing = 6.0; // 球体間の距離
-                        vec3 repetition = vec3(spacing);
-                        vec3 q = mod(p + 0.5 * repetition, repetition) - 0.5 * repetition;
+                        // レペテーションの設定（x-z平面のみ）
+                        float spacing = 6.0; // キューブ間の距離
+                        vec2 repetition = vec2(spacing);
+                        vec2 q = mod(p.xz + 0.5 * repetition, repetition) - 0.5 * repetition;
                         
                         // オリジナルの位置を保存（マテリアルIDの変更に使用）
-                        vec3 cellIndex = floor((p + 0.5 * repetition) / repetition);
+                        vec3 cellIndex = vec3(floor((p.x + 0.5 * spacing) / spacing),
+                        0.0, // y方向のインデックスは常に0
+                        floor((p.z + 0.5 * spacing) / spacing));
                         
                         // インデックスが奇数の場合はスキップ
                         if (!isOddIndex(cellIndex)) {
-                            // 球体の位置
-                            vec3 spherePos = vec3(0.0, 1.0, 0.0);
-                            // グリッドごとに異なる上下運動を追加
-                            float wobbleSpeed = dot(cellIndex, vec3(0.7, 0.9, 1.1));
-                            float wobbleRange = 0.75;
-                            spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed);
+                            // 基本位置
+                            vec3 basePos = vec3(0.0, 1.0, 0.0);
                             
-                            // グリッドごとのxz方向のずれを計算
-                            float noiseScale = 0.5;
-                            float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * spacing;
-                            float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * spacing;
-                            spherePos.x += offsetX;
-                            spherePos.z += offsetZ;
+                            // 虫のような動き
+                            float time = iTime * 0.5; // 動きの速さ
+                            float crawlPhase = dot(cellIndex.xz, vec2(0.7, 1.1)); // 各キューブで異なる位相
                             
-                            vec3 localP = q - spherePos;
+                            // 上下運動（より有機的な動き）
+                            float verticalMotion = sin(time + crawlPhase) * 0.5 +
+                            sin(time * 1.3 + crawlPhase * 1.1) * 0.3 +
+                            sin(time * 2.1 + crawlPhase * 0.7) * 0.2;
+                            
+                            // 左右の揺れ
+                            float sideMotion = cos(time * 0.7 + crawlPhase) * 0.2 +
+                            cos(time * 1.5 + crawlPhase * 0.9) * 0.1;
+                            
+                            // 前後の揺れ
+                            float frontMotion = sin(time * 0.9 + crawlPhase * 1.2) * 0.2 +
+                            sin(time * 1.7 + crawlPhase * 0.8) * 0.1;
+                            
+                            // 最終位置の計算
+                            vec3 finalPos = basePos;
+                            finalPos.y += verticalMotion * 2.0; // 上下の動きを強調
+                            finalPos.x += sideMotion;
+                            finalPos.z += frontMotion;
+                            
+                            vec3 localP = vec3(q.x, p.y, q.y) - finalPos;
                             
                             // キューブの回転パラメータを取得
                             vec4 rotationParams = getRotationParams(cellIndex, iTime);
@@ -385,7 +399,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
                             
                             // 地面からの距離に応じたスムージング
-                            float groundDistance = spherePos.y;
+                            float groundDistance = finalPos.y;
                             float smoothRange = 1.2;
                             float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
                             localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
