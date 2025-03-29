@@ -315,22 +315,14 @@ vec3 calcNormal(vec3 p)
         float camVerticalSpeed = 0.15; // カメラの上下運動の速度
         float camVerticalRange = 4.0; // カメラの上下運動の範囲
         
-        // 注視点の動きのパラメータ
-        float targetSpeed = 0.1; // 注視点の移動速度
-        float targetRange = 2.0; // 注視点の移動範囲
+        // 注視点をキューブの位置に設定
+        vec3 target = getFlyingCubePosition(iTime);
         
         // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
             camRadius * cos(iTime * camSpeed),
             max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)), // 最低高度を1.0に制限
             camRadius * sin(iTime * camSpeed)
-        );
-        
-        // 注視点（ゆっくりと動く）
-        vec3 target = vec3(
-            targetRange * sin(iTime * targetSpeed * 0.7),
-            1.0 + 0.5 * sin(iTime * targetSpeed * 0.5),
-            targetRange * cos(iTime * targetSpeed * 0.9)
         );
         
         // カメラの向きを計算
