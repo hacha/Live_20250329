@@ -12,6 +12,39 @@ float hash(vec3 p) {
     return fract(p.x * p.y * p.z);
 }
 
+// ノイズ関数（グリッド間でスムーズな値を生成）
+float smoothNoise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    
+    // スムーズステップ
+    vec3 u = f * f * (3.0 - 2.0 * f);
+    
+    // 8つの頂点でのハッシュ値
+    float a = hash(i);
+    float b = hash(i + vec3(1.0, 0.0, 0.0));
+    float c = hash(i + vec3(0.0, 1.0, 0.0));
+    float d = hash(i + vec3(1.0, 1.0, 0.0));
+    float e = hash(i + vec3(0.0, 0.0, 1.0));
+    float f1 = hash(i + vec3(1.0, 0.0, 1.0));
+    float g = hash(i + vec3(0.0, 1.0, 1.0));
+    float h = hash(i + vec3(1.0, 1.0, 1.0));
+    
+    // トリリニア補間
+    float k0 = a;
+    float k1 = b - a;
+    float k2 = c - a;
+    float k3 = e - a;
+    float k4 = a - b - c + d;
+    float k5 = a - c - e + g;
+    float k6 = a - b - e + f1;
+    float k7 = -a + b + c - d + e - f1 - g + h;
+    
+    return k0 + k1 * u.x + k2 * u.y + k3 * u.z +
+    k4 * u.x * u.y + k5 * u.y * u.z + k6 * u.z * u.x +
+    k7 * u.x * u.y * u.z;
+}
+
 // 点滅制御関数
 float blink(vec3 cellIndex, float time) {
     float h = hash(cellIndex);
@@ -147,8 +180,9 @@ vec2 mapObjects(vec3 p) {
     spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed); // ゆっくりとした上下運動
     
     // グリッドごとのxz方向のずれを計算
-    float offsetX = (hash(cellIndex) - 0.5) * 0.30 * spacing;
-    float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.30 * spacing;
+    float noiseScale = 0.5; // ノイズのスケール
+    float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * spacing;
+    float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * spacing;
     spherePos.x += offsetX;
     spherePos.z += offsetZ;
     
@@ -413,8 +447,9 @@ vec3 calcNormal(vec3 p)
             vec3 spherePos = vec3(0.0, 1.0, 0.0);
             
             // グリッドごとのxz方向のずれを計算（球体間の距離は6.0）
-            float offsetX = (hash(cellIndex) - 0.5) * 0.30 * 6.0;
-            float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.30 * 6.0;
+            float noiseScale = 0.5; // ノイズのスケール
+            float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * 6.0;
+            float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * 6.0;
             spherePos.x += offsetX;
             spherePos.z += offsetZ;
             
