@@ -436,6 +436,40 @@ float smin(float a, float b, float k) {
     return min(a, b) - h * h * k * 0.25;
 }
 
+// FBMのノイズ関数
+float noise(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    
+    float n = i.x + i.y * 157.0 + 113.0 * i.z;
+    return mix(
+        mix(
+            mix(hash(vec3(n + 0.0)), hash(vec3(n + 1.0)), f.x),
+            mix(hash(vec3(n + 157.0)), hash(vec3(n + 158.0)), f.x),
+        f.y),
+        mix(
+            mix(hash(vec3(n + 113.0)), hash(vec3(n + 114.0)), f.x),
+            mix(hash(vec3(n + 270.0)), hash(vec3(n + 271.0)), f.x),
+        f.y),
+    f.z);
+}
+
+// FBM（Fractional Brownian Motion）関数
+float fbm(vec3 p) {
+    float f = 0.0;
+    float amp = 0.5;
+    float freq = 1.0;
+    
+    for(int i = 0; i < 5; i ++ ) {
+        f += amp * noise(p * freq);
+        freq *= 2.0;
+        amp *= 0.5;
+    }
+    
+    return f;
+}
+
 vec2 mapObjects(vec3 p) {
     // 立方体の位置と回転
     vec3 cubePos = vec3(0.0);
@@ -445,6 +479,10 @@ vec2 mapObjects(vec3 p) {
     // 立方体のサイズと距離計算
     vec3 cubeSize = vec3(3.0);
     float cubeDist = sdBox(rotatedP, cubeSize);
+    
+    // FBMによるディスプレイスメント
+    float displacement = fbm(rotatedP * 1.5 + iTime * 0.2) * 0.5;
+    cubeDist -= displacement;
     
     // 立方体のマテリアルIDを設定（5.0以上）
     return vec2(cubeDist, 5.0);
