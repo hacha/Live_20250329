@@ -437,27 +437,10 @@ float smin(float a, float b, float k) {
 }
 
 vec2 mapObjects(vec3 p) {
-    // 四次元空間での繰り返し
-    float repetitionSize = 40.0; // 空間的な繰り返しの大きさ
-    float timeRepetition = 8.0; // 時間的な繰り返しの周期
-    
-    // 空間的な繰り返し
-    vec3 repetitionOffset = vec3(repetitionSize);
-    p = mod(p + repetitionOffset * 0.5, repetitionOffset) - repetitionOffset * 0.5;
-    
-    // 時間的な繰り返し（第4軸）
-    float localTime = mod(iTime, timeRepetition);
-    
-    // X、Y、Z座標すべてをスムーズに処理
-    float smoothK = 1.0; // スムーズさの制御パラメータ
-    p.x = smin(p.x, - p.x, smoothK);
-    p.y = smin(p.y, - p.y, smoothK);
-    p.z = smin(p.z, - p.z, smoothK);
-    
     // 立方体の位置と回転
     vec3 cubePos = vec3(0.0);
     vec3 rotatedP = p - cubePos;
-    rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), localTime) * rotatedP;
+    rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
     // 立方体のサイズと距離計算
     vec3 cubeSize = vec3(3.0);
