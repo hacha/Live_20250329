@@ -378,48 +378,71 @@ vec3 calcNormal(vec3 p) {
     
     // ナバホ族の幾何学模様を生成する関数
     vec3 navajoPattern(vec2 uv, float time) {
-        // スケールの調整（より細かいパターン）
-        uv *= 8.0;
+        // 基準位置のtween
+        vec2 baseOffset = vec2(
+            sin(time * 0.3) * 0.5 + cos(time * 0.2) * 0.3,
+            cos(time * 0.4) * 0.5 + sin(time * 0.1) * 0.3
+        );
         
-        // 時間による緩やかな移動と回転
+        // 極座標変換のための基準点を移動
+        vec2 center = uv - baseOffset;
+        float r = length(center);
+        float theta = atan(center.y, center.x);
+        
+        // 極座標空間での繰り返し
+        float repeatR = 4.0; // 半径方向の繰り返し
+        float repeatTheta = 8.0; // 角度方向の繰り返し
+        
+        // 極座標空間での変形
+        r = fract(r * repeatR);
+        theta = mod(theta * repeatTheta / (2.0 * PI), 1.0);
+        
+        // 極座標から直交座標に戻す
+        vec2 polarUV = vec2(
+            r * cos(theta * 2.0 * PI),
+            r * sin(theta * 2.0 * PI)
+        );
+        
+        // スケールの調整（より細かいパターン）
+        polarUV *= 8.0;
+        
+        // 時間による回転
         float rotation = time * 0.05;
         mat2 rot = mat2(cos(rotation), - sin(rotation), sin(rotation), cos(rotation));
-        uv = rot * uv;
-        uv.x += sin(time * 0.1) * 0.5;
-        uv.y += cos(time * 0.08) * 0.5;
+        polarUV = rot * polarUV;
         
         // 基本グリッドの作成
-        vec2 id = floor(uv);
-        vec2 gv = fract(uv) - 0.5;
+        vec2 id = floor(polarUV);
+        vec2 gv = fract(polarUV) - 0.5;
         
         // 複数のパターンの生成
         float diamond = abs(gv.x) + abs(gv.y); // ダイヤモンドパターン
         float circle = length(gv); // 円形パターン
-        float zigzag = sin(uv.x * 4.0 + time * 0.2) * cos(uv.y * 4.0 + time * 0.15); // ジグザグ
+        float zigzag = sin(polarUV.x * 4.0 + time * 0.2) * cos(polarUV.y * 4.0 + time * 0.15); // ジグザグ
         float rays = abs(sin(atan(gv.y, gv.x) * 8.0)); // 放射状パターン
         float squares = max(abs(gv.x), abs(gv.y)); // 正方形パターン
-        float stairs = step(0.5, fract((uv.x + uv.y) * 2.0)); // 階段パターン
+        float stairs = step(0.5, fract((polarUV.x + polarUV.y) * 2.0)); // 階段パターン
         
-        // パターンの組み合わせ
-        float pattern1 = mix(diamond, circle, 0.5);
-        float pattern2 = mix(zigzag, rays, sin(time * 0.3) * 0.5 + 0.5);
-        float pattern3 = mix(squares, stairs, cos(time * 0.2) * 0.5 + 0.5);
+        // パターンの組み合わせ（極座標空間に合わせて調整）
+        float pattern1 = mix(diamond, circle, 0.5 + sin(r * 10.0 + time) * 0.5);
+        float pattern2 = mix(zigzag, rays, sin(theta * 5.0 + time * 0.3) * 0.5 + 0.5);
+        float pattern3 = mix(squares, stairs, cos(r * 8.0 + theta * 4.0 + time * 0.2) * 0.5 + 0.5);
         
-        // 最終パターン
+        // 最終パターン（極座標空間での位置を考慮）
         float finalPattern = mix(
-            mix(pattern1, pattern2, sin(time * 0.1) * 0.5 + 0.5),
+            mix(pattern1, pattern2, sin(r * 6.0 + time * 0.1) * 0.5 + 0.5),
             pattern3,
-            cos(time * 0.15) * 0.5 + 0.5
+            cos(theta * 4.0 + time * 0.15) * 0.5 + 0.5
         );
         
-        // 4色のカラーパレット（より明るい鮮やかな色）
+        // 4色のカラーパレット（より鮮やかな色）
         vec3 col1 = vec3(1.0, 0.3, 0.2); // 赤
         vec3 col2 = vec3(0.2, 0.5, 1.0); // 青
         vec3 col3 = vec3(1.0, 0.8, 0.2); // 黄色
         vec3 col4 = vec3(0.3, 1.0, 0.4); // 緑
         
-        // パターンと時間に基づいて色を選択
-        float t = mod(finalPattern + time * 0.2, 4.0);
+        // 極座標に基づいた色の選択
+        float t = mod(finalPattern + r * 2.0 + theta + time * 0.2, 4.0);
         vec3 color;
         
         if (t < 1.0) {
@@ -432,10 +455,15 @@ vec3 calcNormal(vec3 p) {
             color = mix(col4, col1, t - 3.0);
         }
         
-        // パターンの強度に基づいて色を調整
-        color = mix(vec3(1.0), color, smoothstep(0.0, 1.0, finalPattern));
+        // パターンの強度に基づいて色を調整（極座標空間での位置を考慮）
+        float intensity = smoothstep(0.0, 1.0, finalPattern);
+        intensity *= 1.0 + sin(r * 10.0 + theta * 8.0 + time) * 0.2; // 極座標による変調
+        color = mix(vec3(0.1), color, intensity);
         
-        // 全体的な明るさの調整
+        // 放射状のグロー効果
+        float glow = pow(1.0 - r, 2.0) * 0.5;
+        color += vec3(1.0, 0.8, 0.6) * glow;
+        
         return color;
     }
     
@@ -657,11 +685,9 @@ vec3 calcNormal(vec3 p) {
             float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0);
             col = col * mix(vec3(0.2), vec3(1.0), shadow);
         } else {
-            // 背景のナバホ模様
-            float phi = acos(rd.y);
-            float theta = atan(rd.x, rd.z);
-            vec2 bgUV = vec2(theta / (2.0 * PI) + 0.5, phi / PI);
-            col = navajoPattern(bgUV * 2.0, iTime);
+            // 背景のナバホ模様（極座標ベース）
+            vec2 bgUV = rd.xy / (1.0 + abs(rd.z)); // 球面投影
+            col = navajoPattern(bgUV, iTime);
         }
         
         // トーンマッピングとカラーグレーディング
