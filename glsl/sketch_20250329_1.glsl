@@ -480,8 +480,8 @@ vec2 mapObjects(vec3 p) {
     vec3 cubeSize = vec3(3.0);
     float cubeDist = sdBox(rotatedP, cubeSize);
     
-    // FBMによるディスプレイスメント
-    float displacement = fbm(rotatedP * 1.5 + iTime * 0.2) * 0.5;
+    // FBMによるディスプレイスメント（1.9倍に強化）
+    float displacement = fbm(rotatedP * 1.5 + iTime * 0.2) * 0.95; // 0.5 * 1.9 = 0.95
     cubeDist -= displacement;
     
     // 立方体のマテリアルIDを設定（5.0以上）
