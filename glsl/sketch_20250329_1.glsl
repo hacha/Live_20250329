@@ -207,28 +207,29 @@ vec2 mapObjects(vec3 p) {
     
     vec3 localP = q - spherePos;
     
-    // 球体の距離計算
-    float sphereRadius = 0.6;
+    // キューブの距離計算（球体の代わり）
+    float cubeSize = 0.5; // キューブのサイズ（球体の半径の0.8倍程度）
+    vec3 cubeDims = vec3(cubeSize);
     
     // キューブとの距離を計算
-    float distToCube = length(p - cubePos) - 2.0; // キューブのサイズを考慮
+    float distToCube = length(p - cubePos) - 2.0; // メインのキューブとの距離
     
-    // キューブに近い場合、球体を縮小
+    // キューブに近い場合、グリッドのキューブを縮小
     float shrinkRange = 4.0; // 縮小が始まる距離
     float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
-    float dynamicRadius = sphereRadius * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
+    vec3 dynamicSize = cubeDims * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
     
-    float sphereDist = length(localP) - dynamicRadius;
+    float gridCubeDist = sdBox(localP, dynamicSize);
     
     // 地面からの距離に応じたスムージング
     float groundDistance = spherePos.y;
     float smoothRange = 1.2;
     float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-    sphereDist = mix(length(localP) - sphereRadius * 1.5, sphereDist, smoothFactor);
+    gridCubeDist = mix(sdBox(localP, cubeDims * 1.5), gridCubeDist, smoothFactor);
     
-    // 球体の距離と材質IDを更新
-    if (sphereDist < res.x) {
-        res = vec2(sphereDist, 2.0);
+    // キューブの距離と材質IDを更新
+    if (gridCubeDist < res.x) {
+        res = vec2(gridCubeDist, 2.0);
     }
     
     // 地面（平面）
@@ -473,26 +474,29 @@ vec3 calcNormal(vec3 p)
             spherePos.z += offsetZ;
             
             vec3 localP = q - spherePos;
-            float sphereDist = length(localP) - 1.0;
             
-            // 球体の色を取得
+            // キューブの距離計算（球体の代わり）
+            vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
+            float localGridCubeDist = sdBox(localP, gridCubeDims);
+            
+            // キューブの色を取得
             vec3 baseColor = vec3(
                 0.5 + 0.5 * sin(cellIndex.x * 1.5),
                 0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
                 0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
             );
-            vec3 sphereColor = baseColor * vec3(0.6, 0.8, 1.0);
+            vec3 cubeColor = baseColor * vec3(0.6, 0.8, 1.0);
             
             // 点滅効果を適用
             float blinkFactor = blink(cellIndex, iTime);
-            sphereColor *= blinkFactor;
+            cubeColor *= blinkFactor;
             
             // 距離に基づいて影響を計算
-            float influence = smoothstep(2.0, 0.0, abs(sphereDist));
+            float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
             influence *= 0.1; // 影響の強さを調整
             
             // 影響を蓄積
-            sphereInfluence += sphereColor * influence;
+            sphereInfluence += cubeColor * influence;
             totalDensity += influence;
             
             // 十分に近づいたか、遠すぎる場合は終了
