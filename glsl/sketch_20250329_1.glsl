@@ -661,6 +661,33 @@ vec3 calcNormal(vec3 p)
     vec3 getSkyboxPattern(vec3 rd, float time) {
         // 基本となる方向ベクトルを時間とともにゆっくり回転
         vec3 dir = rd;
+        
+        // 大きな歪みエフェクトを追加
+        float distortionScale = 0.8; // 歪みの大きさ
+        float distortionSpeed = 0.3; // 歪みの速さ
+        
+        // 大きなノイズによる歪み
+        vec3 distortion1 = vec3(
+            smoothNoise(dir * 0.5 + vec3(time * 0.2)),
+            smoothNoise(dir * 0.5 + vec3(time * 0.15 + 42.0)),
+            smoothNoise(dir * 0.5 + vec3(time * 0.25 + 123.0))
+        ) * 2.0 - 1.0; // -1から1の範囲に
+        
+        // より大きなスケールの歪み
+        vec3 distortion2 = vec3(
+            smoothNoise(dir * 0.2 + vec3(time * 0.1)),
+            smoothNoise(dir * 0.2 + vec3(time * 0.12 + 42.0)),
+            smoothNoise(dir * 0.2 + vec3(time * 0.08 + 123.0))
+        ) * 2.0 - 1.0;
+        
+        // 歪みを合成
+        vec3 finalDistortion = distortion1 * 0.6 + distortion2 * 0.4;
+        
+        // 方向ベクトルを歪ませる
+        dir += finalDistortion * distortionScale;
+        dir = normalize(dir); // 正規化が重要
+        
+        // 通常の回転も適用（より遅く）
         dir.xy *= rot2D(sin(time * 0.1) * 0.2);
         dir.yz *= rot2D(cos(time * 0.08) * 0.15);
         dir.xz *= rot2D(sin(time * 0.12) * 0.18);
@@ -668,42 +695,42 @@ vec3 calcNormal(vec3 p)
         // 深い宇宙の背景色
         vec3 baseColor = vec3(0.02, 0.01, 0.04); // 非常に暗い青紫
         
-        // 星雲のノイズパターン
-        float n1 = smoothNoise(dir * 1.5 + vec3(time * 0.02));
-        float n2 = smoothNoise(dir * 3.0 - vec3(time * 0.015));
-        float n3 = smoothNoise(dir * 5.0 + vec3(time * 0.025));
+        // 星雲のノイズパターン（より大きなスケール）
+        float n1 = smoothNoise(dir * 0.8 + vec3(time * 0.02));
+        float n2 = smoothNoise(dir * 1.5 - vec3(time * 0.015));
+        float n3 = smoothNoise(dir * 2.2 + vec3(time * 0.025));
         
-        // 星雲の色
-        vec3 nebula1 = vec3(0.4, 0.1, 0.6) * smoothstep(0.4, 0.8, n1); // 紫の星雲
-        vec3 nebula2 = vec3(0.1, 0.3, 0.6) * smoothstep(0.4, 0.8, n2); // 青い星雲
-        vec3 nebula3 = vec3(0.6, 0.2, 0.3) * smoothstep(0.5, 0.9, n3); // 赤い星雲
+        // 星雲の色（より強く）
+        vec3 nebula1 = vec3(0.4, 0.1, 0.6) * smoothstep(0.3, 0.7, n1); // 紫の星雲
+        vec3 nebula2 = vec3(0.1, 0.3, 0.6) * smoothstep(0.3, 0.7, n2); // 青い星雲
+        vec3 nebula3 = vec3(0.6, 0.2, 0.3) * smoothstep(0.4, 0.8, n3); // 赤い星雲
         
-        // 星のパターン生成
+        // 歪んだ空間での星のパターン生成
         float stars = 0.0;
         for(int i = 0; i < 3; i ++ ) {
-            vec3 starDir = dir * float(i + 1) * 20.0;
-            float starNoise = smoothNoise(starDir);
-            // より明確な星のパターン
-            stars += step(0.98, starNoise) * (1.0 - float(i) * 0.2);
+            vec3 starDir = dir * float(i + 1) * 15.0;
+            float starNoise = smoothNoise(starDir + finalDistortion);
+            stars += step(0.97, starNoise) * (1.0 - float(i) * 0.2);
         }
         
-        // 明るい星（より少なく、より明るく）
-        float brightStars = step(0.995, smoothNoise(dir * 50.0));
+        // 明るい星（歪みの影響を受ける）
+        float brightStars = step(0.992, smoothNoise(dir * 40.0 + finalDistortion * 0.5));
         
-        // 星の瞬き効果
-        float twinkle = sin(time * 3.0 + stars * 10.0) * 0.5 + 0.5;
+        // 星の瞬き効果（より激しく）
+        float twinkle = sin(time * 4.0 + stars * 15.0) * 0.5 + 0.5;
         
         // すべての要素を組み合わせる
         vec3 finalColor = baseColor;
-        finalColor += nebula1 * 0.3;
-        finalColor += nebula2 * 0.2;
-        finalColor += nebula3 * 0.15;
-        finalColor += vec3(1.0) * stars * 0.8 * twinkle; // 通常の星
-        finalColor += vec3(1.0, 0.95, 0.8) * brightStars * 1.5; // 明るい星
+        finalColor += nebula1 * 0.4;
+        finalColor += nebula2 * 0.3;
+        finalColor += nebula3 * 0.25;
+        finalColor += vec3(1.0) * stars * 0.9 * twinkle; // 通常の星
+        finalColor += vec3(1.0, 0.95, 0.8) * brightStars * 1.8; // 明るい星
         
-        // 銀河の中心部のような明るい領域
-        float galaxyCore = smoothstep(0.95, 0.98, sin(atan(dir.x, dir.z) * 2.0 + cos(dir.y * 3.0)));
-        finalColor += vec3(0.4, 0.2, 0.6) * galaxyCore * 0.3;
+        // 銀河の中心部のような明るい領域（歪みの影響を受ける）
+        float galaxyCore = smoothstep(0.92, 0.98, sin(atan(dir.x + finalDistortion.x, dir.z + finalDistortion.z) * 2.0 +
+        cos((dir.y + finalDistortion.y) * 3.0)));
+        finalColor += vec3(0.4, 0.2, 0.6) * galaxyCore * 0.4;
         
         return finalColor;
     }
