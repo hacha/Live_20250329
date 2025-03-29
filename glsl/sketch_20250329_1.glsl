@@ -638,45 +638,51 @@ vec3 calcNormal(vec3 p)
     
     // 不穏なskyboxパターンを生成する関数
     vec3 getSkyboxPattern(vec3 rd, float time) {
-        // 基本となる方向ベクトルを時間とともに歪ませる
+        // 基本となる方向ベクトルを時間とともにゆっくり回転
         vec3 dir = rd;
-        dir.xy *= rot2D(sin(time * 0.3) * 0.5);
-        dir.yz *= rot2D(cos(time * 0.2) * 0.4);
-        dir.xz *= rot2D(sin(time * 0.4) * 0.3);
+        dir.xy *= rot2D(sin(time * 0.1) * 0.2);
+        dir.yz *= rot2D(cos(time * 0.08) * 0.15);
+        dir.xz *= rot2D(sin(time * 0.12) * 0.18);
         
-        // ノイズパターンを生成
-        float n1 = smoothNoise(dir * 2.0 + vec3(time * 0.2));
-        float n2 = smoothNoise(dir * 4.0 - vec3(time * 0.25));
-        float n3 = smoothNoise(dir * 8.0 + vec3(time * 0.3));
-        float n4 = smoothNoise(dir * 16.0 - vec3(time * 0.15));
+        // 深い宇宙の背景色
+        vec3 baseColor = vec3(0.02, 0.01, 0.04); // 非常に暗い青紫
         
-        // エッジを作成
-        float edge1 = step(0.5, n1);
-        float edge2 = step(0.5, n2);
-        float edge3 = step(0.5, n3);
-        float edge4 = step(0.5, n4);
+        // 星雲のノイズパターン
+        float n1 = smoothNoise(dir * 1.5 + vec3(time * 0.02));
+        float n2 = smoothNoise(dir * 3.0 - vec3(time * 0.015));
+        float n3 = smoothNoise(dir * 5.0 + vec3(time * 0.025));
         
-        // パターンの合成
-        float pattern = edge1 * 0.4 + edge2 * 0.3 + edge3 * 0.2 + edge4 * 0.1;
+        // 星雲の色
+        vec3 nebula1 = vec3(0.4, 0.1, 0.6) * smoothstep(0.4, 0.8, n1); // 紫の星雲
+        vec3 nebula2 = vec3(0.1, 0.3, 0.6) * smoothstep(0.4, 0.8, n2); // 青い星雲
+        vec3 nebula3 = vec3(0.6, 0.2, 0.3) * smoothstep(0.5, 0.9, n3); // 赤い星雲
         
-        // 色の設定
-        vec3 color1 = vec3(0.1, 0.0, 0.2); // 暗い紫
-        vec3 color2 = vec3(0.0, 0.1, 0.3); // 暗い青
-        vec3 color3 = vec3(0.2, 0.0, 0.1); // 暗い赤
-        vec3 color4 = vec3(0.0, 0.2, 0.2); // 暗いシアン
+        // 星のパターン生成
+        float stars = 0.0;
+        for(int i = 0; i < 3; i ++ ) {
+            vec3 starDir = dir * float(i + 1) * 20.0;
+            float starNoise = smoothNoise(starDir);
+            // より明確な星のパターン
+            stars += step(0.98, starNoise) * (1.0 - float(i) * 0.2);
+        }
         
-        // 色の混合
-        vec3 finalColor = mix(color1, color2, pattern);
-        finalColor = mix(finalColor, color3, smoothstep(0.4, 0.6, n3));
-        finalColor = mix(finalColor, color4, smoothstep(0.4, 0.6, n4));
+        // 明るい星（より少なく、より明るく）
+        float brightStars = step(0.995, smoothNoise(dir * 50.0));
         
-        // 同心円パターン
-        float circles = step(0.5, sin(length(dir) * 10.0 - time));
-        finalColor = mix(finalColor, vec3(0.15), circles * 0.3);
+        // 星の瞬き効果
+        float twinkle = sin(time * 3.0 + stars * 10.0) * 0.5 + 0.5;
         
-        // コントラストと彩度の調整
-        finalColor = pow(finalColor, vec3(0.8));
-        finalColor = clamp(finalColor * 1.5, 0.0, 1.0);
+        // すべての要素を組み合わせる
+        vec3 finalColor = baseColor;
+        finalColor += nebula1 * 0.3;
+        finalColor += nebula2 * 0.2;
+        finalColor += nebula3 * 0.15;
+        finalColor += vec3(1.0) * stars * 0.8 * twinkle; // 通常の星
+        finalColor += vec3(1.0, 0.95, 0.8) * brightStars * 1.5; // 明るい星
+        
+        // 銀河の中心部のような明るい領域
+        float galaxyCore = smoothstep(0.95, 0.98, sin(atan(dir.x, dir.z) * 2.0 + cos(dir.y * 3.0)));
+        finalColor += vec3(0.4, 0.2, 0.6) * galaxyCore * 0.3;
         
         return finalColor;
     }
