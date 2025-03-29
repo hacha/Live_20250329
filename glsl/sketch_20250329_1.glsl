@@ -73,7 +73,7 @@ float sdCubeGrid(vec3 p, vec3 totalSize) {
     }
     
     // 小さなキューブの距離計算（サイズを半分に）
-    float smallCubeDist = sdBox(localP, smallCubeSize * 0.4); // 40%のサイズで隙間を大きく
+    float smallCubeDist = sdBox(localP, smallCubeSize * 0.2);
     return smallCubeDist;
 }
 
@@ -159,22 +159,17 @@ vec2 mapObjects(vec3 p) {
     float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
     float dynamicRadius = sphereRadius * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
     
-    float objDist = length(localP) - dynamicRadius;
-    
-    // キューブに近い場合、球体を変形
-    float cubeInfluenceRange = 5.0; // 変形が始まる距離
-    float cubeInfluenceFactor = smoothstep(cubeInfluenceRange, 0.0, distToCube);
-    objDist = mix(objDist, distToCube * 0.5, cubeInfluenceFactor); // キューブに向かって徐々に変形
+    float sphereDist = length(localP) - dynamicRadius;
     
     // 地面からの距離に応じたスムージング
     float groundDistance = spherePos.y;
     float smoothRange = 1.2;
     float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-    objDist = mix(length(localP) - sphereRadius * 1.5, objDist, smoothFactor);
+    sphereDist = mix(length(localP) - sphereRadius * 1.5, sphereDist, smoothFactor);
     
-    // オブジェクトの距離と材質IDを更新
-    if (objDist < res.x) {
-        res = vec2(objDist, 2.0);
+    // 球体の距離と材質IDを更新
+    if (sphereDist < res.x) {
+        res = vec2(sphereDist, 2.0);
     }
     
     // 地面（平面）
