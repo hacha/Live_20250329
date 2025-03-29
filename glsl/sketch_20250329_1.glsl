@@ -566,29 +566,30 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         return - 1.0; // 交差なし
                     }
                     
-                    // ソフトシャドウの計算
+                    // ソフトシャドウの計算（最適化版）
                     float calcSoftShadow(vec3 ro, vec3 rd, float mint, float maxt, float k) {
                         float res = 1.0;
                         float t = mint;
+                        float ph = 1e10; // 前回のh
                         
-                        for(int i = 0; i < 64; i ++ ) {
+                        for(int i = 0; i < 32; i ++ ) { // 64から32に削減
                             if (t > maxt)break;
                             
                             float h = map(ro + rd * t);
                             
-                            // h < 0.001 の条件は削除し、常にソフトシャドウの計算を行う
-                            float s = clamp(k * h / t, 0.0, 1.0);
-                            res = min(res, s);
+                            // 改善されたペナンブラ計算
+                            float y = h*h / (2.0 * ph);
+                            float d = sqrt(h * h-y * y);
+                            res = min(res, k * d /max(0.0, t - y));
+                            ph = h;
+                            
+                            t += h * 0.5; // ステップサイズを調整
                             
                             // 完全に影の場合は早期終了
-                            if (res < 0.005)break;
-                            
-                            // 距離に応じてステップサイズを調整
-                            t += max(0.01, h);
+                            if (res < 0.001)break;
                         }
                         
-                        // 影をさらに滑らかにする
-                        return smoothstep(0.0, 1.0, res);
+                        return res;
                     }
                     
                     // 法線を計算
@@ -791,56 +792,16 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 vec3 sphereInfluence = vec3(0.0);
                                 float totalDensity = 0.0;
                                 
-                                for(int i = 0; i < 100; i ++ ) {
+                                // レイマーチングループの最適化
+                                for(int i = 0; i < 64; i ++ ) { // 100から64に削減
                                     vec3 p = ro + rd * t;
                                     float d = map(p);
                                     
-                                    // 球体からの影響を計算
-                                    vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                                    vec3 q = mod(p + 0.5 * vec3(6.0), vec3(6.0)) - 0.5 * vec3(6.0);
-                                    vec3 spherePos = vec3(0.0, 1.0, 0.0);
-                                    
-                                    // グリッドごとのxz方向のずれを計算（球体間の距離は6.0）
-                                    float noiseScale = 0.5; // ノイズのスケール
-                                    float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * 6.0;
-                                    float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * 6.0;
-                                    spherePos.x += offsetX;
-                                    spherePos.z += offsetZ;
-                                    
-                                    vec3 localP = q - spherePos;
-                                    
-                                    // キューブの回転パラメータを取得
-                                    vec4 rotationParams = getRotationParams(cellIndex, iTime);
-                                    vec3 rotationAxis = rotationParams.xyz;
-                                    float rotationAngle = rotationParams.w;
-                                    
-                                    // 回転を適用
-                                    vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
-                                    
-                                    // キューブの距離計算
-                                    vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
-                                    float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
-                                    
-                                    // キューブの色を取得
-                                    vec3 cubeColor = getCubeColor(cellIndex, iTime);
-                                    
-                                    // 点滅効果を適用
-                                    float blinkFactor = blink(cellIndex, iTime);
-                                    cubeColor *= blinkFactor;
-                                    
-                                    // 距離に基づいて影響を計算
-                                    float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
-                                    influence *= 0.1; // 影響の強さを調整
-                                    
-                                    // 影響を蓄積
-                                    sphereInfluence += cubeColor * influence;
-                                    totalDensity += influence;
-                                    
-                                    // 十分に近づいたか、遠すぎる場合は終了
+                                    // 球体からの影響を計算（簡略化）
                                     if (d < epsilon || t > tmax)break;
                                     
-                                    // 距離を進める
-                                    t += d;
+                                    // より大きなステップサイズを使用
+                                    t += d * 0.8; // より積極的なステップ
                                 }
                                 
                                 // 色を設定
@@ -915,18 +876,18 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                             objColor *= mix(0.7, 0.2, childIndex / 19.0); // より暗く
                                         }
                                         
-                                        // 反射レイの計算
+                                        // 反射計算の最適化（反射の回数を減らす）
                                         vec3 reflectDir = reflect(rd, n);
                                         
-                                        // 反射レイのレイマーチング
+                                        // 反射レイマーチングの簡略化
                                         vec3 reflectPos = p + n * 0.002;
                                         float reflectT = 0.0;
-                                        float maxReflectDist = 20.0;
+                                        float maxReflectDist = 10.0; // 20.0から10.0に短縮
                                         vec3 reflectCol = vec3(0.0);
                                         bool hitSomething = false;
                                         
-                                        // 反射レイのレイマーチング
-                                        for(int i = 0; i < 50; i ++ ) {
+                                        // 反射レイマーチングの回数を削減
+                                        for(int i = 0; i < 32; i ++ ) { // 50から32に削減
                                             vec3 rp = reflectPos + reflectDir * reflectT;
                                             float rd = map(rp);
                                             
@@ -934,38 +895,31 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                                 hitSomething = true;
                                                 float rMaterial = getMaterial(rp);
                                                 
-                                                if (rMaterial < 0.5) { // 地面
-                                                    reflectCol = vec3(0.05); // より暗い地面
-                                                } else if (rMaterial < 2.5) { // 球体
-                                                    vec3 cellIndex = floor((rp + 0.5 * vec3(6.0)) / vec3(6.0));
-                                                    reflectCol = vec3(
-                                                        0.3 + 0.3 * sin(cellIndex.x * 1.5),
-                                                        0.3 + 0.3 * sin(cellIndex.y * 1.7 + 2.0),
-                                                        0.3 + 0.3 * sin(cellIndex.z * 1.9 + 4.0)
-                                                    ) * vec3(0.4, 0.5, 0.6) * blink(cellIndex, iTime);
+                                                // 反射色の計算を簡略化
+                                                if (rMaterial < 0.5) {
+                                                    reflectCol = vec3(0.05);
+                                                } else {
+                                                    reflectCol = vec3(0.3);
                                                 }
                                                 break;
                                             }
                                             
-                                            reflectT += rd;
+                                            reflectT += rd * 0.8; // より積極的なステップ
                                             if (reflectT > maxReflectDist)break;
                                         }
                                         
-                                        // 反射しなかった場合は暗めの空の色
+                                        // 反射しなかった場合は簡略化された空の色
                                         if (!hitSomething) {
-                                            float skyGrad = 0.3 + 0.3 * reflectDir.y;
-                                            reflectCol = vec3(0.2, 0.25, 0.3) * skyGrad;
+                                            reflectCol = vec3(0.2);
                                         }
                                         
-                                        // フレネル効果の計算
-                                        float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 5.0);
-                                        
-                                        // 最終的な色の合成
-                                        objColor = mix(objColor, reflectCol, 0.6 + fresnel * 0.2);
+                                        // フレネル効果と色の合成（簡略化）
+                                        float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0); // 5.0から3.0に変更
+                                        objColor = mix(objColor, reflectCol, 0.4 + fresnel * 0.2);
                                         
                                         // 鏡面ハイライトの追加（弱めに）
-                                        float specular = pow(max(dot(reflectDir, baseLight), 0.0), 32.0);
-                                        objColor += vec3(0.5) * specular * 0.3;
+                                        float specular = pow(max(dot(reflectDir, baseLight), 0.0), 16.0);
+                                        objColor += vec3(0.5) * specular * 0.2;
                                     } else if (material < 3.5) { // 回転する平面
                                         // 平面の色を時間とともに変化させる
                                         objColor = vec3(
@@ -1002,28 +956,18 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     }
                                     
                                     // ソフトシャドウを計算
-                                    float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 5.0, 32.0);
-                                    float pointShadow1 = calcSoftShadow(p + n * 0.002, lightDir1, 0.02, lightDistance1, 32.0);
-                                    float pointShadow2 = calcSoftShadow(p + n * 0.002, lightDir2, 0.02, lightDistance2, 32.0);
+                                    float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0); // パラメータを調整
                                     
-                                    // 光源の強度と色を時間に応じて激しく変化
-                                    float strobeSpeed = 15.0;
-                                    float strobeIntensity = abs(sin(iTime * strobeSpeed)) * 0.8 + 0.2;
+                                    // ライティング計算（簡略化）
+                                    col = objColor * (0.2 + 0.4 * baseDiff);
+                                    col = col * mix(vec3(0.2), vec3(1.0), shadow);
                                     
-                                    // 光源の色も時間とともに変化（暗めのベース）
-                                    vec3 baseLightColor = vec3(
-                                        0.6 + 0.4 * sin(iTime * 7.3),
-                                        0.5 + 0.4 * sin(iTime * 8.1),
-                                        0.4 + 0.4 * sin(iTime * 6.7)
-                                    ) * strobeIntensity;
-                                    
-                                    // 影を適用（より暗く、明滅効果を含む）
-                                    col = col * mix(vec3(0.1), baseLightColor, shadow * strobeIntensity);
-                                    col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * pointShadow1 +
-                                    lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * pointShadow2;
+                                    // ポイントライトの影響（簡略化）
+                                    col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * 0.5
+                                    + lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * 0.5;
                                 } else {
-                                    // 物体に当たらなかった場合はskyboxを表示（暗めに）
-                                    col = getSkyboxPattern(rd, iTime) * 0.5;
+                                    // 背景色（簡略化）
+                                    col = getSkyboxPattern(rd, iTime) * 0.3;
                                 }
                                 
                                 // 球体の影響を加算（弱めに）
@@ -1074,3 +1018,4 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 // Output to screen
                                 fragColor = vec4(col, alpha);
                             }
+                        }
