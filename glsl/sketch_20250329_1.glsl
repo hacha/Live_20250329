@@ -484,16 +484,33 @@ vec2 mapObjects(vec3 p) {
     vec3 rotatedP = p - cubePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
-    // 立方体のサイズと距離計算
-    vec3 cubeSize = vec3(3.0);
-    float cubeDist = sdBox(rotatedP, cubeSize);
-    
     // チェッカーパターンの計算
     float checkerScale = 6.5;
     vec3 checkerP = rotatedP * checkerScale;
     float checker = step(0.0, sin(checkerP.x) * sin(checkerP.y)) *
     step(0.0, sin(checkerP.y) * sin(checkerP.z)) *
     step(0.0, sin(checkerP.z) * sin(checkerP.x));
+    
+    // 立方体のサイズと距離計算
+    vec3 cubeSize = vec3(3.0);
+    float cubeDist = sdBox(rotatedP, cubeSize);
+    
+    // 白いチェッカー部分に球体を配置
+    float sphereRadius = 0.15;
+    float sphereOffset = 0.2;
+    float sphereDist = 1e10;
+    
+    if (checker > 0.5) {
+        // 立方体の表面の法線方向を計算
+        vec3 normal = normalize(rotatedP);
+        // 球体の位置を法線方向に少しオフセット
+        vec3 spherePos = rotatedP - normal * sphereOffset;
+        sphereDist = sdSphere(spherePos, sphereRadius);
+        
+        // 球体と立方体の距離をスムーズに結合
+        float k = 0.1; // ブレンド係数
+        cubeDist = smin(cubeDist, sphereDist, k);
+    }
     
     // FBMディスプレイスメントとチェッカーパターンの組み合わせ
     float timeFactor = 0.2 * (1.0 + step(0.75, sin(iTime * 0.3)) * 4.0);
@@ -502,24 +519,15 @@ vec2 mapObjects(vec3 p) {
     
     cubeDist -= displacement;
     
-    // 白いチェッカー部分に球体を配置
-    float sphereRadius = 0.15;
-    float sphereOffset = 0.2; // 立方体の表面からのオフセット
-    float sphereDist = 1e10;
-    
-    if (checker > 0.5) {
-        // 立方体の表面の法線方向を計算
-        vec3 normal = normalize(rotatedP);
-        // 球体の位置を法線方向に少しオフセット
-        vec3 spherePos = rotatedP - normal * sphereOffset;
-        sphereDist = sdSphere(p - cubePos - spherePos, sphereRadius);
+    // マテリアルIDの決定（距離に基づいて）
+    float materialId;
+    if (checker > 0.5 && sphereDist < cubeDist + sphereOffset) {
+        materialId = 7.0; // 球体のマテリアル
+    } else {
+        materialId = mix(5.0, 6.0, checker); // チェッカーパターンのマテリアル
     }
     
-    // 立方体と球体の距離を結合
-    float finalDist = min(cubeDist, sphereDist);
-    float materialId = sphereDist < cubeDist ? 7.0 : mix(5.0, 6.0, checker);
-    
-    return vec2(finalDist, materialId);
+    return vec2(cubeDist, materialId);
 }
 
 // シーンの距離関数
