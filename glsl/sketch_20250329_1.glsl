@@ -358,21 +358,6 @@ vec3 calcNormal(vec3 p) {
         return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
     }
     
-    // トーンマッピング関数
-    vec3 toneMapping(vec3 color) {
-        // 露出調整
-        float exposure = 1.2;
-        color *= exposure;
-        
-        // ACESフィルムトーンマッピング
-        float a = 2.51;
-        float b = 0.03;
-        float c = 2.43;
-        float d = 0.59;
-        float e = 0.14;
-        return clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
-    }
-    
     // カラーグレーディング
     vec3 colorGrading(vec3 color) {
         // コントラストの強化
@@ -443,6 +428,45 @@ vec3 calcNormal(vec3 p) {
         if (index < 6.0)return vec3(-10.0, 5.0, 5.0); // 左後ろ上から
         if (index < 7.0)return vec3(-10.0, 2.0, 0.0); // 左側から
         return vec3(-10.0, 5.0, - 5.0); // 左前上から
+    }
+    
+    // ピクセルグリッチエフェクト
+    vec3 pixelGlitch(vec3 color, vec2 uv, float time) {
+        // グリッドサイズの定義（時間とともに変化）
+        float gridSize = 20.0 + sin(time * 0.5) * 10.0;
+        vec2 grid = floor(uv * gridSize) / gridSize;
+        
+        // ノイズ生成
+        float noise = hash(vec3(grid * 50.0, time));
+        float glitchStr = step(0.95, noise); // グリッチの発生確率
+        
+        // RGB分離効果
+        float rOffset = sin(grid.x * 10.0 + time) * 0.02;
+        float gOffset = cos(grid.y * 10.0 - time) * 0.02;
+        float bOffset = sin((grid.x + grid.y) * 15.0 + time) * 0.02;
+        
+        // カラーシフト
+        vec3 glitchColor;
+        glitchColor.r = color.r + rOffset * glitchStr;
+        glitchColor.g = color.g + gOffset * glitchStr;
+        glitchColor.b = color.b + bOffset * glitchStr;
+        
+        // ランダムなカラーノイズ
+        vec3 randomColor = vec3(
+            hash(vec3(grid * 1.1, time)),
+            hash(vec3(grid * 2.2, time)),
+            hash(vec3(grid * 3.3, time))
+        );
+        
+        // 時間に基づくグリッチラインの生成
+        float line = step(0.98, sin(grid.y * 100.0 + time * 5.0));
+        
+        // 最終的なグリッチ効果の合成
+        return mix(
+            glitchColor,
+            randomColor,
+            (glitchStr * 0.5 + line * 0.3) * step(0.8, noise)
+        );
     }
     
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
@@ -571,6 +595,10 @@ vec3 calcNormal(vec3 p) {
         // ガンマ補正の前にトーンマッピングとカラーグレーディングを適用
         col = toneMapping(col);
         col = colorGrading(col);
+        
+        // ピクセルグリッチエフェクトの適用
+        vec2 glitchUV = fragCoord / iResolution.xy;
+        col = pixelGlitch(col, glitchUV, iTime);
         
         // ガンマ補正
         col = pow(col, vec3(0.6));
