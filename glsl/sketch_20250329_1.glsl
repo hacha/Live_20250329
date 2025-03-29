@@ -823,8 +823,16 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     
                                     // 2つ目のPointLight（高速バージョン）の位置と効果
                                     vec3 lightPos2 = getSpeedyLightPosition(iTime);
-                                    vec3 lightColor2 = vec3(0.8, 1.0, 0.9) * 2.5; // より明るい青みがかった光
-                                    float lightIntensity2 = 4.0; // やや弱め
+                                    vec3 lightColor2 = vec3(0.8, 1.0, 0.9) * 1.5; // より弱い青みがかった光
+                                    float baseIntensity2 = 2.0; // 基本強度を弱めに
+                                    
+                                    // 高速な明滅効果（複数の周期を組み合わせる）
+                                    float strobe1 = sin(iTime * 8.0) * 0.5 + 0.5; // 8Hzの明滅
+                                    float strobe2 = sin(iTime * 12.0) * 0.5 + 0.5; // 12Hzの明滅
+                                    float strobe3 = sin(iTime * 15.0) * 0.5 + 0.5; // 15Hzの明滅
+                                    float strobeEffect = (strobe1 * 0.4 + strobe2 * 0.3 + strobe3 * 0.3) * 0.8 + 0.2; // 0.2-1.0の範囲
+                                    
+                                    float lightIntensity2 = baseIntensity2 * strobeEffect;
                                     
                                     vec3 lightDir2 = normalize(lightPos2 - p);
                                     float lightDistance2 = length(lightPos2 - p);
