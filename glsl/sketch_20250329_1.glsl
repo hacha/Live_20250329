@@ -423,57 +423,60 @@ float sdSphere(vec3 p, float r) {
     return length(p) - r;
 }
 
+// スムーズミニマム関数
+float smin(float a, float b, float k) {
+    float h = max(k - abs(a - b), 0.0) / k;
+    return min(a, b) - h * h * k * 0.25;
+}
+
 vec2 mapObjects(vec3 p) {
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
     // 親球体の位置と処理
-    vec3 spherePos = getFlyingCubePosition(iTime); // 関数名は変更せずに使用
-    vec3 scaleVec = getConvulsiveScale(iTime); // スケールベクトルを取得
-    float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0; // 平均半径を計算
+    vec3 spherePos = getFlyingCubePosition(iTime);
+    vec3 scaleVec = getConvulsiveScale(iTime);
+    float sphereRadius = (scaleVec.x + scaleVec.y + scaleVec.z) / 3.0;
     
-    // 親球体の回転（見た目に影響しないが、一貫性のために維持）
+    // 親球体の回転
     vec3 rotatedP = p - spherePos;
     rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
     
     // 親球体の距離計算
     float sphereDist = sdSphere(rotatedP, sphereRadius);
-    if (sphereDist < res.x) {
-        res = vec2(sphereDist, 4.0);
-    }
+    float finalDist = sphereDist;
+    float finalMaterial = 4.0;
     
     // 20個の子球体を追加
     const int NUM_CHILDREN = 20;
-    float baseDelay = 0.15; // 基本の遅延時間
-    float maxSize = 0.95; // 最大サイズ（親の85%）
-    float minSize = 0.20; // 最小サイズ（親の30%）
+    float baseDelay = 0.15;
+    float maxSize = 0.95;
+    float minSize = 0.20;
+    float blendK = 8.0; // ブレンドの強さ（大きいほど滑らか）
     
     for(int i = 0; i < NUM_CHILDREN; i ++ ) {
-        // 遅延時間を計算（等間隔）
         float delay = baseDelay * float(i + 1);
-        
-        // サイズを計算（徐々に小さく）
         float t = float(i) / float(NUM_CHILDREN - 1);
         float size = mix(maxSize, minSize, t);
         
-        // 子球体の位置を計算
-        vec3 childPos = getChildCubePosition(spherePos, iTime, delay); // 関数名は変更せずに使用
+        vec3 childPos = getChildCubePosition(spherePos, iTime, delay);
         vec3 childRotatedP = p - childPos;
         childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
         
-        // 子球体のサイズを設定
         float childRadius = sphereRadius * size;
-        
-        // 子球体の距離計算
         float childDist = sdSphere(childRotatedP, childRadius);
         
-        // 子球体の距離と材質IDを更新（材質IDは4.1から4.99）
-        if (childDist < res.x) {
-            res = vec2(childDist, 4.1 + float(i) * 0.045);
+        // スムーズブレンド
+        float blendWeight = 1.0 - t * 0.5; // 大きい球体ほど強く影響
+        finalDist = smin(finalDist, childDist, blendK * blendWeight);
+        
+        // 最も近い球体のマテリアルIDを使用
+        if (childDist < sphereDist) {
+            finalMaterial = 4.1 + float(i) * 0.045;
         }
     }
     
-    return res;
+    return vec2(finalDist, finalMaterial);
 }
 
 // シーンの距離関数
