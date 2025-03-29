@@ -666,7 +666,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 // エッジを強調
                                 finalColor += vec3(1.0) * step(0.1, edge) * 0.5;
                                 
-                                return finalColor;
+                                // 最終的な色を暗く調整
+                                return finalColor * 0.3;
                             }
                             
                             void mainImage(out vec4 fragColor, in vec2 fragCoord)
