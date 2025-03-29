@@ -60,7 +60,20 @@ float blink(vec3 cellIndex, float time) {
 
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
-    // 基本となる円運動のパラメータ
+    // 大きな周回運動のパラメータ
+    float orbitRadius = 25.0; // 大きな周回の半径
+    float orbitSpeed = 0.15; // ゆっくりとした周回速度
+    float orbitHeight = 12.0; // 周回の高さ
+    
+    // 大きな周回運動の計算
+    float orbitTheta = time * orbitSpeed;
+    vec3 orbitCenter = vec3(
+        orbitRadius * cos(orbitTheta),
+        orbitHeight + sin(time * 0.2) * 3.0, // 高さも緩やかに変化
+        orbitRadius * sin(orbitTheta)
+    );
+    
+    // 基本となる円運動のパラメータ（既存の動き）
     float baseRadius = 12.0;
     float baseHeight = 5.5;
     
@@ -88,7 +101,8 @@ vec3 getFlyingCubePosition(float time) {
     float x = radius * (cos(theta1) * 0.6 + cos(theta2) * 0.3 + cos(theta3) * 0.1);
     float z = radius * (sin(theta1) * 0.6 + sin(theta2) * 0.3 + sin(theta3) * 0.1);
     
-    return vec3(x, height, z);
+    // 局所的な動きを大きな周回運動に加算
+    return orbitCenter + vec3(x, height - orbitHeight, z);
 }
 
 // 回転行列を生成する関数
