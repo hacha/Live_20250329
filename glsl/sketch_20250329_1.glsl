@@ -208,8 +208,7 @@ vec2 mapObjects(vec3 p) {
     vec3 localP = q - spherePos;
     
     // キューブの距離計算（球体の代わり）
-    float cubeSize = 0.5; // キューブのサイズ（球体の半径の0.8倍程度）
-    vec3 cubeDims = vec3(cubeSize);
+    vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
     
     // キューブとの距離を計算
     float distToCube = length(p - cubePos) - 2.0; // メインのキューブとの距離
@@ -217,7 +216,7 @@ vec2 mapObjects(vec3 p) {
     // キューブに近い場合、グリッドのキューブを縮小
     float shrinkRange = 4.0; // 縮小が始まる距離
     float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
-    vec3 dynamicSize = cubeDims * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
+    vec3 dynamicSize = gridCubeDims * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
     
     float gridCubeDist = sdBox(localP, dynamicSize);
     
@@ -225,7 +224,7 @@ vec2 mapObjects(vec3 p) {
     float groundDistance = spherePos.y;
     float smoothRange = 1.2;
     float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-    gridCubeDist = mix(sdBox(localP, cubeDims * 1.5), gridCubeDist, smoothFactor);
+    gridCubeDist = mix(sdBox(localP, gridCubeDims * 1.5), gridCubeDist, smoothFactor);
     
     // キューブの距離と材質IDを更新
     if (gridCubeDist < res.x) {
