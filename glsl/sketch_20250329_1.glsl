@@ -5,6 +5,26 @@
 #define GRID_MAX_DISTANCE 15.0 // グリッドが見える最大距離
 #define PI 3.1415926535897932384626433832795
 
+// ハッシュ関数（グリッドごとのランダム値生成用）
+float hash(vec3 p) {
+    p = fract(p * vec3(123.34, 456.21, 789.92));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y * p.z);
+}
+
+// 点滅制御関数
+float blink(vec3 cellIndex, float time) {
+    float h = hash(cellIndex);
+    // 8%の確率で点滅する
+    if (h > 0.92) {
+        // 点滅の速さと位相をランダムに
+        float blinkSpeed = 3.0 + h * 5.0;
+        float phase = h * 10.0;
+        return step(0.5, sin(time * blinkSpeed + phase));
+    }
+    return 1.0;
+}
+
 /**
 * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
 *
@@ -332,6 +352,9 @@ vec3 calcNormal(vec3 p)
                     0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
                 );
                 objColor = baseColor * vec3(0.6, 0.8, 1.0); // 色相の範囲を調整
+                // 点滅効果を適用
+                float blinkFactor = blink(cellIndex, iTime);
+                objColor *= blinkFactor;
             } else { // 棘の部分
                 // 時間とともに脈動する発光色
                 float glow = 0.5 + 0.5 * sin(iTime * 2.0);
@@ -343,6 +366,9 @@ vec3 calcNormal(vec3 p)
                     0.2 + 0.2 * sin(cellIndex.z * 1.9 + 4.0)
                 );
                 objColor = baseGlow * (2.0 + glow * 5.0); // 発光色を変化させつつ強度を保持
+                // 点滅効果を適用（発光部分はより強く点滅）
+                float blinkFactor = blink(cellIndex, iTime);
+                objColor *= mix(0.2, 1.0, blinkFactor);
             }
             
             // 単純な拡散照明
