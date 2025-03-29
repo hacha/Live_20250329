@@ -1,7 +1,7 @@
 // for shadertoy
 
 // グリッド表示の設定
-#define SHOW_GRID true
+#define SHOW_GRID false
 #define GRID_MAX_DISTANCE 15.0 // グリッドが見える最大距離
 #define PI 3.1415926535897932384626433832795
 
@@ -27,6 +27,58 @@ vec2 mapObjects(vec3 p) {
         orbitHeight * sin(iTime * orbitSpeed * 0.7) + 1.0,
         orbitRadius * sin(iTime * orbitSpeed)
     );
+    
+    // 回転するキューブの位置と回転
+    vec3 cubePos = vec3(0.0, 1.0, 0.0);
+    vec3 q = p - cubePos;
+    
+    // キューブの回転
+    float rotSpeed = 1.0;
+    float c = cos(iTime * rotSpeed);
+    float s = sin(iTime * rotSpeed);
+    mat3 rotY = mat3(
+        c, 0.0, s,
+        0.0, 1.0, 0.0,
+        - s, 0.0, c
+    );
+    q = rotY * q;
+    
+    // キューブのサイズ
+    vec3 cubeSize = vec3(1.0);
+    vec3 d = abs(q) - cubeSize;
+    float cubeDist = length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+    
+    // 棘の生成
+    float spikeLength = 1.0;
+    float spikeCount = 8.0;
+    float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0); // パルスアニメーション
+    
+    // 正規化された位置ベクトル
+    vec3 nq = normalize(q);
+    
+    // 棘のパターンを生成
+    float spike = 0.0;
+    float freq = 8.0;
+    spike += sin(nq.x * freq + iTime) * cos(nq.y * freq + iTime) * sin(nq.z * freq);
+    spike = pow(abs(spike), 2.0) * spikeLength * spikePulse;
+    
+    // キューブの表面からの距離に基づいて棘を適用
+    float surfaceDist = abs(cubeDist);
+    float spikeMask = smoothstep(0.0, 0.3, surfaceDist);
+    float spikedCubeDist = cubeDist - spike * (1.0 - spikeMask);
+    
+    // キューブと棘の距離と材質IDを更新
+    if (spikedCubeDist < res.x) {
+        // 棘の部分は異なるマテリアルID（2.1）を割り当てる
+        float spikeMaterial = mix(2.1, 2.0, spikeMask);
+        res = vec2(spikedCubeDist, spikeMaterial);
+    }
+    
+    // 地面（平面）
+    float planeDist = p.y;
+    if (planeDist < res.x) {
+        res = vec2(planeDist, 0.0);
+    }
     
     return res;
 }
@@ -210,18 +262,27 @@ vec3 calcNormal(vec3 p)
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
         // カメラの設定
-        vec3 ro = vec3(0.0, 2.0, - 7.0); // Ray origin (カメラ位置)
-        vec3 rd = normalize(vec3(uv, 1.0)); // Ray direction
+        float camRadius = 7.0; // カメラの回転半径
+        float camHeight = 3.0; // カメラの高さ
+        float camSpeed = -1.3; // カメラの回転速度
         
-        // カメラ回転
-        float theta = PI / 4.0;
-        mat3 rot = mat3(
-            cos(theta), 0.0, sin(theta),
-            0.0, 1.0, 0.0,
-            - sin(theta), 0.0, cos(theta)
+        // カメラの位置を計算（キューブの周りを円を描いて回転）
+        vec3 ro = vec3(
+            camRadius * cos(iTime * camSpeed),
+            camHeight + 1.0 * sin(iTime * camSpeed * 0.5), // 上下にも少し動く
+            camRadius * sin(iTime * camSpeed)
         );
-        rd = rot * rd;
-        ro = rot * ro;
+        
+        // 注視点（キューブの位置）
+        vec3 target = vec3(0.0, 1.0, 0.0);
+        
+        // カメラの向きを計算
+        vec3 forward = normalize(target - ro);
+        vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
+        vec3 up = cross(forward, right);
+        
+        // レイの方向を計算
+        vec3 rd = normalize(forward + right * uv.x + up * uv.y);
         
         // レイマーチング
         float t = 0.0;
@@ -262,8 +323,12 @@ vec3 calcNormal(vec3 p)
                 }
             } else if (material < 1.5) { // 球体
                 objColor = vec3(1.0, 1.0, 1.0); // 白色
-            } else { // 箱
-                objColor = vec3(1.0, 1.0, 1.0); // 白色
+            } else if (material < 2.05) { // キューブ本体
+                objColor = vec3(0.3, 0.6, 1.0); // 青みがかった色
+            } else { // 棘の部分
+                // 時間とともに脈動する発光色
+                float glow = 0.5 + 0.5 * sin(iTime * 2.0);
+                objColor = vec3(1.0, 0.3, 0.1) * (1.0 + glow * 2.0); // 赤みがかった発光色
             }
             
             // 単純な拡散照明
