@@ -25,6 +25,34 @@ float blink(vec3 cellIndex, float time) {
     return 1.0;
 }
 
+// 飛び回るキューブの位置を計算する関数
+vec3 getFlyingCubePosition(float time) {
+    // リサージュ曲線で複雑な動きを生成
+    return vec3(
+        5.0 * sin(time * 0.7),
+        3.0 + 2.0 * sin(time * 0.5 + PI * 0.5),
+        5.0 * sin(time * 0.9 + PI * 0.25)
+    );
+}
+
+// 回転行列を生成する関数
+mat3 rotateMatrix(vec3 axis, float angle) {
+    float s = sin(angle);
+    float c = cos(angle);
+    float oc = 1.0 - c;
+    return mat3(
+        oc * axis.x * axis.x + c, oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
+        oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c, oc * axis.y * axis.z - axis.x * s,
+        oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c
+    );
+}
+
+// キューブの距離関数
+float sdBox(vec3 p, vec3 b) {
+    vec3 q = abs(p) - b;
+    return length(max(q, 0.0)) + min(max(q.x, max(q.y, q.z)), 0.0);
+}
+
 /**
 * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
 *
@@ -37,6 +65,22 @@ float blink(vec3 cellIndex, float time) {
 vec2 mapObjects(vec3 p) {
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
+    
+    // 飛び回るキューブの処理
+    vec3 cubePos = getFlyingCubePosition(iTime);
+    vec3 cubeSize = vec3(0.5); // キューブのサイズ
+    
+    // キューブの回転
+    vec3 rotatedP = p - cubePos;
+    rotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime) * rotatedP;
+    
+    // キューブの距離計算
+    float cubeDist = sdBox(rotatedP, cubeSize);
+    
+    // キューブの距離と材質IDを更新
+    if (cubeDist < res.x) {
+        res = vec2(cubeDist, 4.0); // 材質ID 4.0 を飛び回るキューブに割り当て
+    }
     
     // レペテーションの設定
     float spacing = 6.0; // 球体間の距離
@@ -416,6 +460,16 @@ vec3 calcNormal(vec3 p)
                 objColor = baseColor * vec3(1.0, 0.9, 0.7); // より温かみのある色
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
+            } else if (material < 4.5) { // 飛び回るキューブ
+                // 時間に基づいて色が変化する虹色のような効果
+                objColor = vec3(
+                    0.5 + 0.5 * sin(iTime * 1.1),
+                    0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
+                    0.5 + 0.5 * sin(iTime * 1.5 + PI)
+                );
+                // メタリックな光沢を追加
+                float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
+                objColor = mix(objColor, vec3(1.0), fresnel * 0.7);
             } else { // 未使用
                 objColor = vec3(1.0);
             }
