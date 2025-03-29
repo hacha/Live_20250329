@@ -341,25 +341,34 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             res = vec2(cubeDist, 4.0);
                         }
                         
-                        // 3つの子キューブを追加
-                        float childDelays[3] = float[3](0.3, 0.6, 0.9); // 遅延時間
-                        float childSizes[3] = float[3](0.85, 0.50, 0.30); // サイズ比率
+                        // 20個の子キューブを追加
+                        const int NUM_CHILDREN = 20;
+                        float baseDelay = 0.15; // 基本の遅延時間
+                        float maxSize = 0.85; // 最大サイズ（親の85%）
+                        float minSize = 0.30; // 最小サイズ（親の30%）
                         
-                        for(int i = 0; i < 3; i ++ ) {
+                        for(int i = 0; i < NUM_CHILDREN; i ++ ) {
+                            // 遅延時間を計算（等間隔）
+                            float delay = baseDelay * float(i + 1);
+                            
+                            // サイズを計算（徐々に小さく）
+                            float t = float(i) / float(NUM_CHILDREN - 1);
+                            float size = mix(maxSize, minSize, t);
+                            
                             // 子キューブの位置を計算
-                            vec3 childPos = getChildCubePosition(cubePos, iTime, childDelays[i]);
+                            vec3 childPos = getChildCubePosition(cubePos, iTime, delay);
                             vec3 childRotatedP = p - childPos;
-                            childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - childDelays[i]) * childRotatedP;
+                            childRotatedP = rotateMatrix(normalize(vec3(1.0, 1.0, 1.0)), iTime - delay) * childRotatedP;
                             
                             // 子キューブのサイズを設定
-                            vec3 childSize = cubeSize * childSizes[i];
+                            vec3 childSize = cubeSize * size;
                             
                             // 子キューブの距離計算
                             float childDist = morphDistance(childRotatedP, childSize, morphFactor);
                             
-                            // 子キューブの距離と材質IDを更新（材質IDは4.1, 4.2, 4.3）
+                            // 子キューブの距離と材質IDを更新（材質IDは4.1から4.99）
                             if (childDist < res.x) {
-                                res = vec2(childDist, 4.1 + float(i) * 0.1);
+                                res = vec2(childDist, 4.1 + float(i) * 0.045);
                             }
                         }
                         
@@ -773,8 +782,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     
                                     // 子キューブの場合は色を少し暗く
                                     if (material > 4.05) {
-                                        float childIndex = (material - 4.1) / 0.1; // 0, 1, 2
-                                        objColor *= mix(0.9, 0.6, childIndex / 2.0); // だんだん暗く
+                                        float childIndex = (material - 4.1) / 0.045; // 0から19
+                                        objColor *= mix(0.9, 0.4, childIndex / 19.0); // だんだん暗く
                                     }
                                     
                                     // 反射レイの計算
