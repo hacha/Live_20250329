@@ -54,32 +54,9 @@ vec2 mapObjects(vec3 p) {
     float sphereRadius = 1.0;
     float sphereDist = length(localP) - sphereRadius;
     
-    // 棘の生成
-    float spikeLength = 1.0;
-    float spikeCount = 8.0;
-    // 各球体で位相をずらす
-    float timeOffset = dot(cellIndex, vec3(1.2, 1.4, 1.6));
-    float spikePulse = 0.5 + 0.5 * sin(iTime * 2.0 + timeOffset); // パルスアニメーション
-    
-    // 正規化された位置ベクトル（すでに球体の中心からの方向）
-    vec3 nq = normalize(localP);
-    
-    // 棘のパターンを生成
-    float spike = 0.0;
-    float freq = 8.0;
-    spike += sin(nq.x * freq + iTime + timeOffset) * cos(nq.y * freq + iTime + timeOffset) * sin(nq.z * freq);
-    spike = pow(abs(spike), 2.0) * spikeLength * spikePulse;
-    
-    // 球体の表面からの距離に基づいて棘を適用
-    float surfaceDist = abs(sphereDist);
-    float spikeMask = smoothstep(0.0, 0.3, surfaceDist);
-    float spikedSphereDist = sphereDist - spike * (1.0 - spikeMask);
-    
-    // 球体と棘の距離と材質IDを更新
-    if (spikedSphereDist < res.x) {
-        // 棘の部分は異なるマテリアルID（2.1）を割り当てる
-        float spikeMaterial = mix(2.1, 2.0, spikeMask);
-        res = vec2(spikedSphereDist, spikeMaterial);
+    // 球体の距離と材質IDを更新
+    if (sphereDist < res.x) {
+        res = vec2(sphereDist, 2.0);
     }
     
     // 地面（平面）
@@ -343,20 +320,8 @@ vec3 calcNormal(vec3 p)
                 // 点滅効果を適用
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
-            } else { // 棘の部分
-                // 時間とともに脈動する発光色
-                float glow = 0.5 + 0.5 * sin(iTime * 2.0);
-                // グリッドの位置に基づいて発光色を変化
-                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                vec3 baseGlow = vec3(
-                    0.8 + 0.2 * sin(cellIndex.x * 1.5),
-                    0.3 + 0.2 * sin(cellIndex.y * 1.7 + 2.0),
-                    0.2 + 0.2 * sin(cellIndex.z * 1.9 + 4.0)
-                );
-                objColor = baseGlow * (2.0 + glow * 5.0); // 発光色を変化させつつ強度を保持
-                // 点滅効果を適用（発光部分はより強く点滅）
-                float blinkFactor = blink(cellIndex, iTime);
-                objColor *= mix(0.2, 1.0, blinkFactor);
+            } else { // 棘の部分（削除）
+                objColor = vec3(1.0); // 白色（この部分は実際には使用されない）
             }
             
             // 単純な拡散照明
