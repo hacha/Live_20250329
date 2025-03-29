@@ -454,9 +454,6 @@ vec2 mapObjects(vec3 p) {
     p.y = smin(p.y, - p.y, smoothK);
     p.z = smin(p.z, - p.z, smoothK);
     
-    // 距離と材質ID（最初は無効な値で初期化）
-    vec2 res = vec2(1e10, - 1.0);
-    
     // 立方体の位置と回転
     vec3 cubePos = vec3(0.0);
     vec3 rotatedP = p - cubePos;
@@ -1004,14 +1001,14 @@ vec3 calcNormal(vec3 p)
             + lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * 0.5;
         } else {
             // カラフルな背景パターン
-            float stripeWidth = 0.2;
+            float stripeWidth = 0.4;
             float stripeFreq = 1.0 / stripeWidth;
             float scrollSpeed = 5.0;
             
             // 波動効果のパラメータ
-            float waveFreq = 3.0;
-            float waveAmp = 0.3;
-            float waveSpeed = 2.0;
+            float waveFreq = 0.03;
+            float waveAmp = 0.63;
+            float waveSpeed = 1.0;
             
             // 波動関数（背景用）
             float wave1 = sin(rd.x * waveFreq + iTime * waveSpeed) * waveAmp;
