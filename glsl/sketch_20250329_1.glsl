@@ -142,8 +142,8 @@ vec4 getRotationParams(vec3 cellIndex, float time) {
     float h = hash(cellIndex);
     float h2 = hash(cellIndex + vec3(42.0));
     
-    // 10%の確率で回転する
-    if (h > 0.9) {
+    // 50%の確率で回転する
+    if (h > 0.5) {
         // 回転の周期（8秒）
         float rotationCycle = 8.0;
         float cycleStart = floor(time / rotationCycle) * rotationCycle;
@@ -174,6 +174,27 @@ vec4 getRotationParams(vec3 cellIndex, float time) {
     }
     
     return vec4(vec3(1.0, 0.0, 0.0), 0.0); // 回転なし
+}
+
+// キューブの色を計算する関数
+vec3 getCubeColor(vec3 cellIndex, float time) {
+    float noiseScale = 0.3; // ノイズのスケール（小さいほど滑らか）
+    
+    // 各色成分に異なるオフセットを使用してノイズを生成
+    float r = smoothNoise(cellIndex * noiseScale);
+    float g = smoothNoise(cellIndex * noiseScale + vec3(42.0));
+    float b = smoothNoise(cellIndex * noiseScale + vec3(123.0));
+    
+    // 時間による変化を加える
+    float timeScale = 0.1;
+    r = mix(r, smoothNoise(cellIndex * noiseScale + vec3(time * timeScale)), 0.3);
+    g = mix(g, smoothNoise(cellIndex * noiseScale + vec3(42.0 + time * timeScale)), 0.3);
+    b = mix(b, smoothNoise(cellIndex * noiseScale + vec3(123.0 + time * timeScale)), 0.3);
+    
+    // 色の範囲を調整
+    vec3 baseColor = vec3(r, g, b) * vec3(0.6, 0.8, 1.0);
+    
+    return baseColor;
 }
 
 /**
@@ -275,12 +296,7 @@ vec2 mapObjects(vec3 p) {
     localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
     
     // キューブの色を取得
-    vec3 baseColor = vec3(
-        0.5 + 0.5 * sin(cellIndex.x * 1.5),
-        0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
-        0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
-    );
-    vec3 cubeColor = baseColor * vec3(0.6, 0.8, 1.0);
+    vec3 cubeColor = getCubeColor(cellIndex, iTime);
     
     // 点滅効果を適用
     float blinkFactor = blink(cellIndex, iTime);
@@ -554,12 +570,7 @@ vec3 calcNormal(vec3 p)
             float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
             
             // キューブの色を取得
-            vec3 baseColor = vec3(
-                0.5 + 0.5 * sin(cellIndex.x * 1.5),
-                0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
-                0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
-            );
-            vec3 cubeColor = baseColor * vec3(0.6, 0.8, 1.0);
+            vec3 cubeColor = getCubeColor(cellIndex, iTime);
             
             // 点滅効果を適用
             float blinkFactor = blink(cellIndex, iTime);
@@ -603,15 +614,10 @@ vec3 calcNormal(vec3 p)
                 }
             } else if (material < 1.5) { // 球体
                 objColor = vec3(1.0, 1.0, 1.0); // 白色
-            } else if (material < 2.05) { // 球体本体
+            } else if (material < 2.05) { // グリッドキューブ本体
                 // グリッドの位置に基づいて色を変化
                 vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                vec3 baseColor = vec3(
-                    0.5 + 0.5 * sin(cellIndex.x * 1.5),
-                    0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
-                    0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
-                );
-                objColor = baseColor * vec3(0.6, 0.8, 1.0);
+                objColor = getCubeColor(cellIndex, iTime);
                 float blinkFactor = blink(cellIndex, iTime);
                 objColor *= blinkFactor;
             } else if (material < 4.5) { // 飛び回るキューブ
