@@ -634,8 +634,27 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         
                         // 不穏なskyboxパターンを生成する関数
                         vec3 getSkyboxPattern(vec3 rd, float time) {
-                            // 基本となる方向ベクトルを時間とともに歪ませる
+                            // 万華鏡効果のための方向ベクトルの変換
                             vec3 dir = rd;
+                            float kaleidNum = 8.0; // 分割数
+                            
+                            // 方向ベクトルを極座標に変換
+                            float theta = atan(dir.z, dir.x);
+                            float phi = atan(length(dir.xz), dir.y);
+                            
+                            // 万華鏡効果（角度の折り返し）
+                            theta = mod(theta, 2.0 * PI / kaleidNum);
+                            if (theta > PI / kaleidNum) {
+                                theta = 2.0 * PI / kaleidNum - theta;
+                            }
+                            
+                            // 極座標を直交座標に戻す
+                            float r = length(dir);
+                            dir.x = r * cos(theta) * sin(phi);
+                            dir.z = r * sin(theta) * sin(phi);
+                            dir.y = r * cos(phi);
+                            
+                            // 基本となる方向ベクトルを時間とともに歪ませる
                             dir.xy *= rot2D(sin(time * 0.5) * 0.8);
                             dir.yz *= rot2D(cos(time * 0.4) * 0.9);
                             dir.xz *= rot2D(sin(time * 0.6) * 0.7);
@@ -655,11 +674,11 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             // エッジパターンの合成
                             float pattern = edge1 * 0.4 + edge2 * 0.3 + edge3 * 0.2 + edge4 * 0.1;
                             
-                            // より鮮やかな色の設定
-                            vec3 color1 = vec3(1.0, 0.1, 1.0); // 強いマゼンタ
-                            vec3 color2 = vec3(0.1, 1.0, 1.0); // 強いシアン
-                            vec3 color3 = vec3(1.0, 1.0, 0.1); // 強いイエロー
-                            vec3 color4 = vec3(0.1, 1.0, 0.1); // 強いネオングリーン
+                            // より鮮やかな色の設定（彩度4倍）
+                            vec3 color1 = vec3(1.0, 0.0, 1.0); // 純マゼンタ
+                            vec3 color2 = vec3(0.0, 1.0, 1.0); // 純シアン
+                            vec3 color3 = vec3(1.0, 1.0, 0.0); // 純イエロー
+                            vec3 color4 = vec3(0.0, 1.0, 0.0); // 純グリーン
                             
                             // 時間に基づく色の変化（より急激に）
                             float t1 = step(0.5, sin(time * 0.7));
@@ -673,21 +692,26 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             
                             // 渦巻きパターンの追加（より急激な変化）
                             vec2 spiral = vec2(
-                                step(0.5, sin(atan(dir.z, dir.x) * 12.0 + time * 3.0)),
-                                step(0.5, cos(atan(dir.y, length(dir.xz)) * 10.0 - time * 2.5))
+                                step(0.5, sin(atan(dir.z, dir.x) * 16.0 + time * 4.0)),
+                                step(0.5, cos(atan(dir.y, length(dir.xz)) * 14.0 - time * 3.5))
                             );
-                            float spiralPattern = step(0.5, smoothNoise(vec3(spiral * 4.0, time * 0.3)));
+                            float spiralPattern = step(0.5, smoothNoise(vec3(spiral * 5.0, time * 0.4)));
                             
                             // 波紋パターンの追加（よりシャープに）
-                            float ripple = step(0.5, sin(length(dir) * 15.0 - time * 3.0));
+                            float ripple = step(0.5, sin(length(dir) * 20.0 - time * 4.0));
                             
                             // パターンの合成（加算ではなく置き換え）
-                            finalColor = mix(finalColor, vec3(1.0, 0.2, 1.0), spiralPattern);
-                            finalColor = mix(finalColor, vec3(0.2, 1.0, 1.0), ripple);
+                            finalColor = mix(finalColor, vec3(1.0, 0.0, 1.0), spiralPattern);
+                            finalColor = mix(finalColor, vec3(0.0, 1.0, 1.0), ripple);
                             
-                            // コントラストを上げる
-                            finalColor = pow(finalColor, vec3(0.6));
-                            finalColor = clamp(finalColor * 1.5, 0.0, 1.0);
+                            // コントラストと彩度を上げる
+                            finalColor = pow(finalColor, vec3(0.4)); // コントラスト強調
+                            finalColor = clamp(finalColor * 2.0, 0.0, 1.0); // 明るさ増加
+                            
+                            // 彩度を4倍に
+                            vec3 gray = vec3(dot(finalColor, vec3(0.299, 0.587, 0.114)));
+                            finalColor = mix(gray, finalColor, 4.0);
+                            finalColor = clamp(finalColor, 0.0, 1.0);
                             
                             // エッジ検出による境界強調
                             float edge = length(vec2(
