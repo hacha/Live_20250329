@@ -267,7 +267,7 @@ vec3 calcNormal(vec3 p)
         // カメラの位置を計算（球体の周りを円を描いて回転）
         vec3 ro = vec3(
             camRadius * cos(iTime * camSpeed),
-            camHeight + camVerticalRange * sin(iTime * camVerticalSpeed), // よりゆっくりと大きく上下に動く
+            max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)), // 最低高度を1.0に制限
             camRadius * sin(iTime * camSpeed)
         );
         
