@@ -663,7 +663,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 return finalColor * 0.3;
                             }
                             
-                            // PointLightの位置を計算する関数
+                            // 1つ目のPointLightの位置を計算する関数
                             vec3 getPointLightPosition(float time) {
                                 // 基本となる円運動のパラメータ
                                 float baseRadius = 8.0;
@@ -680,6 +680,27 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 // 水平面での位置の計算（ハードな動き）
                                 float x = baseRadius * sign(sin(theta1)) * abs(cos(theta2));
                                 float z = baseRadius * sign(cos(theta1)) * abs(sin(theta2));
+                                
+                                return vec3(x, height, z);
+                            }
+                            
+                            // 2つ目のPointLightの位置を計算する関数（高速バージョン）
+                            vec3 getSpeedyLightPosition(float time) {
+                                // 基本となる円運動のパラメータ（より小さな半径）
+                                float baseRadius = 6.0;
+                                float baseHeight = 6.0;
+                                
+                                // より速い回転と複雑な動き
+                                float theta1 = time * 3.4; // 2倍速い回転
+                                float theta2 = time * 2.1; // より速い第二の回転
+                                
+                                // 高さの変動（より急激で頻繁な動き）
+                                float heightVar = sin(time * 4.0) * 2.0 + cos(time * 3.0) * 1.5;
+                                float height = baseHeight + heightVar;
+                                
+                                // 水平面での位置の計算（より急激な動き）
+                                float x = baseRadius * sign(sin(theta1 * 1.2)) * abs(cos(theta2 * 0.8));
+                                float z = baseRadius * sign(cos(theta1 * 0.8)) * abs(sin(theta2 * 1.2));
                                 
                                 return vec3(x, height, z);
                             }
@@ -791,17 +812,27 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     vec3 n = calcNormal(p);
                                     float material = getMaterial(p);
                                     
-                                    // PointLightの位置を取得
-                                    vec3 lightPos = getPointLightPosition(iTime);
+                                    // 1つ目のPointLightの位置と効果
+                                    vec3 lightPos1 = getPointLightPosition(iTime);
+                                    vec3 lightColor1 = vec3(1.0, 0.9, 0.8) * 2.0;
+                                    float lightIntensity1 = 5.0;
                                     
-                                    // PointLightの色と強度
-                                    vec3 lightColor = vec3(1.0, 0.9, 0.8) * 2.0; // 明るい温かみのある光
-                                    float lightIntensity = 5.0; // 強い光源
+                                    vec3 lightDir1 = normalize(lightPos1 - p);
+                                    float lightDistance1 = length(lightPos1 - p);
+                                    float attenuation1 = 1.0 / (1.0 + 0.1 * lightDistance1 + 0.01 * lightDistance1 * lightDistance1);
                                     
-                                    // PointLightの方向と減衰
-                                    vec3 lightDir = normalize(lightPos - p);
-                                    float lightDistance = length(lightPos - p);
-                                    float attenuation = 1.0 / (1.0 + 0.1 * lightDistance + 0.01 * lightDistance * lightDistance);
+                                    // 2つ目のPointLight（高速バージョン）の位置と効果
+                                    vec3 lightPos2 = getSpeedyLightPosition(iTime);
+                                    vec3 lightColor2 = vec3(0.8, 1.0, 0.9) * 2.5; // より明るい青みがかった光
+                                    float lightIntensity2 = 4.0; // やや弱め
+                                    
+                                    vec3 lightDir2 = normalize(lightPos2 - p);
+                                    float lightDistance2 = length(lightPos2 - p);
+                                    float attenuation2 = 1.0 / (1.0 + 0.1 * lightDistance2 + 0.01 * lightDistance2 * lightDistance2);
+                                    
+                                    // 基本の光源方向
+                                    vec3 baseLight = normalize(vec3(1.0, 0.50, - 1.0));
+                                    float baseDiff = max(dot(n, baseLight), 0.0);
                                     
                                     // オブジェクトの色を設定
                                     vec3 objColor;
@@ -884,8 +915,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                         objColor = mix(objColor, reflectCol, 0.6 + fresnel * 0.2);
                                         
                                         // 鏡面ハイライトの追加（弱めに）
-                                        vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
-                                        float specular = pow(max(dot(reflectDir, light), 0.0), 32.0);
+                                        float specular = pow(max(dot(reflectDir, baseLight), 0.0), 32.0);
                                         objColor += vec3(0.5) * specular * 0.3;
                                     } else if (material < 3.5) { // 回転する平面
                                         // 平面の色を時間とともに変化させる
@@ -902,31 +932,30 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                         objColor = mix(objColor, reflectCol, 0.5 + fresnel * 0.3);
                                         
                                         // 鏡面ハイライトを追加
-                                        vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
-                                        float specular = pow(max(dot(reflectDir, light), 0.0), 16.0);
+                                        float specular = pow(max(dot(reflectDir, baseLight), 0.0), 16.0);
                                         objColor += vec3(0.3) * specular * 0.2;
                                     } else { // 未使用
                                         objColor = vec3(1.0);
                                     }
                                     
-                                    // 単純な拡散照明（弱めに）を更新
-                                    vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
-                                    float diff = max(dot(n, light), 0.0);
-                                    
-                                    // PointLightからの寄与を追加
-                                    float pointDiff = max(dot(n, lightDir), 0.0);
-                                    vec3 pointLightContribution = lightColor * pointDiff * attenuation * lightIntensity;
+                                    // 両方のPointLightからの寄与を計算
+                                    float pointDiff1 = max(dot(n, lightDir1), 0.0);
+                                    float pointDiff2 = max(dot(n, lightDir2), 0.0);
+                                    vec3 pointLightContribution =
+                                    lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 +
+                                    lightColor2 * pointDiff2 * attenuation2 * lightIntensity2;
                                     
                                     // 環境光+拡散光（暗めに）
                                     if (material < 0.5) { // 地面
-                                        col = objColor * (0.5 + 0.3 * diff + pointLightContribution);
+                                        col = objColor * (0.5 + 0.3 * baseDiff + pointLightContribution);
                                     } else {
-                                        col = objColor * (0.2 + 0.4 * diff + pointLightContribution);
+                                        col = objColor * (0.2 + 0.4 * baseDiff + pointLightContribution);
                                     }
                                     
-                                    // ソフトシャドウを計算（より強く）
-                                    float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 32.0);
-                                    float pointShadow = calcSoftShadow(p + n * 0.002, lightDir, 0.02, lightDistance, 32.0);
+                                    // ソフトシャドウを計算
+                                    float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 5.0, 32.0);
+                                    float pointShadow1 = calcSoftShadow(p + n * 0.002, lightDir1, 0.02, lightDistance1, 32.0);
+                                    float pointShadow2 = calcSoftShadow(p + n * 0.002, lightDir2, 0.02, lightDistance2, 32.0);
                                     
                                     // 光源の強度と色を時間に応じて激しく変化
                                     float strobeSpeed = 15.0;
@@ -941,7 +970,8 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     
                                     // 影を適用（より暗く、明滅効果を含む）
                                     col = col * mix(vec3(0.1), baseLightColor, shadow * strobeIntensity);
-                                    col += pointLightContribution * pointShadow; // PointLightの影響を加算
+                                    col += lightColor1 * pointDiff1 * attenuation1 * lightIntensity1 * pointShadow1 +
+                                    lightColor2 * pointDiff2 * attenuation2 * lightIntensity2 * pointShadow2;
                                 } else {
                                     // 物体に当たらなかった場合はskyboxを表示（暗めに）
                                     col = getSkyboxPattern(rd, iTime) * 0.5;
