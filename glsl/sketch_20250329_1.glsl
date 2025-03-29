@@ -665,10 +665,11 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             
                             // 色を設定
                             vec3 col = vec3(0.0); // 背景色（真っ黒）
-                            float alpha = 1.0;
+                            float alpha = 0.0; // デフォルトで透明に設定
                             
                             // 物体に当たった場合
                             if (t < tmax) {
+                                alpha = 1.0; // 物体に当たった場合のみ不透明に
                                 vec3 p = ro + rd * t;
                                 vec3 n = calcNormal(p);
                                 float material = getMaterial(p);
@@ -779,10 +780,10 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                 col = col * mix(vec3(0.2), lightColor, shadow);
                             }
                             
-                            // 球体の影響を加算
+                            // 球体の影響を加算（物体に当たった場合のみ）
                             col += sphereInfluence;
                             
-                            // 透明なグリッドを描画
+                            // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
                             if (SHOW_GRID) {
                                 float tGrid = intersectGrid(ro, rd);
                                 if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
@@ -795,6 +796,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     // アルファブレンディング
                                     if (gridResult.a > 0.001) {
                                         col = mix(col, gridResult.rgb, gridResult.a);
+                                        alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
                                     }
                                 }
                                 
@@ -814,6 +816,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                     
                                     // アルファブレンディング
                                     col = mix(col, yAxisColor, yAxisAlpha);
+                                    alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
                                 }
                             }
                             
