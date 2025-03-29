@@ -137,6 +137,45 @@ float morphDistance(vec3 p, vec3 size, float morphFactor) {
     return morphedDist;
 }
 
+// 回転アニメーションの制御関数
+vec4 getRotationParams(vec3 cellIndex, float time) {
+    float h = hash(cellIndex);
+    float h2 = hash(cellIndex + vec3(42.0));
+    
+    // 10%の確率で回転する
+    if (h > 0.9) {
+        // 回転の周期（8秒）
+        float rotationCycle = 8.0;
+        float cycleStart = floor(time / rotationCycle) * rotationCycle;
+        float localTime = time - cycleStart;
+        
+        // 回転軸の選択（x, y, z のいずれか）
+        vec3 axis;
+        if (h2 < 0.33) {
+            axis = vec3(1.0, 0.0, 0.0); // X軸
+        } else if (h2 < 0.66) {
+            axis = vec3(0.0, 1.0, 0.0); // Y軸
+        } else {
+            axis = vec3(0.0, 0.0, 1.0); // Z軸
+        }
+        
+        // 回転角度の計算（0から90度まで）
+        float angle = 0.0;
+        if (localTime < 1.0) {
+            // イーズイン・イーズアウトの補間
+            float t = localTime;
+            t = t * t * (3.0 - 2.0 * t); // スムーズステップ
+            angle = t * PI * 0.5; // 90度（π/2）
+        } else {
+            angle = PI * 0.5; // 90度で固定
+        }
+        
+        return vec4(axis, angle);
+    }
+    
+    return vec4(vec3(1.0, 0.0, 0.0), 0.0); // 回転なし
+}
+
 /**
 * 各オブジェクトの距離を計算し、最も近いオブジェクトの情報を返す関数
 *
@@ -207,8 +246,17 @@ vec2 mapObjects(vec3 p) {
     
     vec3 localP = q - spherePos;
     
-    // キューブの距離計算（球体の代わり）
+    // キューブの回転パラメータを取得
+    vec4 rotationParams = getRotationParams(cellIndex, iTime);
+    vec3 rotationAxis = rotationParams.xyz;
+    float rotationAngle = rotationParams.w;
+    
+    // 回転を適用
+    vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
+    
+    // キューブの距離計算
     vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
+    float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
     
     // キューブとの距離を計算
     float distToCube = length(p - cubePos) - 2.0; // メインのキューブとの距離
@@ -218,17 +266,36 @@ vec2 mapObjects(vec3 p) {
     float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
     vec3 dynamicSize = gridCubeDims * mix(0.2, 1.0, shrinkFactor); // 最小で元のサイズの20%まで縮小
     
-    float gridCubeDist = sdBox(localP, dynamicSize);
+    localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
     
     // 地面からの距離に応じたスムージング
     float groundDistance = spherePos.y;
     float smoothRange = 1.2;
     float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-    gridCubeDist = mix(sdBox(localP, gridCubeDims * 1.5), gridCubeDist, smoothFactor);
+    localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
+    
+    // キューブの色を取得
+    vec3 baseColor = vec3(
+        0.5 + 0.5 * sin(cellIndex.x * 1.5),
+        0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
+        0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
+    );
+    vec3 cubeColor = baseColor * vec3(0.6, 0.8, 1.0);
+    
+    // 点滅効果を適用
+    float blinkFactor = blink(cellIndex, iTime);
+    cubeColor *= blinkFactor;
+    
+    // 距離に基づいて影響を計算
+    float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
+    influence *= 0.1; // 影響の強さを調整
+    
+    // 影響を蓄積
+    vec3 sphereInfluence = cubeColor * influence;
     
     // キューブの距離と材質IDを更新
-    if (gridCubeDist < res.x) {
-        res = vec2(gridCubeDist, 2.0);
+    if (localGridCubeDist < res.x) {
+        res = vec2(localGridCubeDist, 2.0);
     }
     
     // 地面（平面）
@@ -474,9 +541,17 @@ vec3 calcNormal(vec3 p)
             
             vec3 localP = q - spherePos;
             
-            // キューブの距離計算（球体の代わり）
+            // キューブの回転パラメータを取得
+            vec4 rotationParams = getRotationParams(cellIndex, iTime);
+            vec3 rotationAxis = rotationParams.xyz;
+            float rotationAngle = rotationParams.w;
+            
+            // 回転を適用
+            vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
+            
+            // キューブの距離計算
             vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
-            float localGridCubeDist = sdBox(localP, gridCubeDims);
+            float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
             
             // キューブの色を取得
             vec3 baseColor = vec3(
