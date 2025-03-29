@@ -294,8 +294,8 @@ vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
     // フレーム内での相対位置（0.0から1.0）
     float framePosition = delay / (0.15 * 20.0); // 20は子球体の総数
     
-    // インデックスが深いほど、より大きな周回半径と遅い速度（3倍に拡大）
-    float orbitRadius = mix(9.0, 36.0, framePosition); // 半径を9から36に調整（3倍）
+    // インデックスが深いほど、より大きな周回半径と遅い速度（距離を10%縮小）
+    float orbitRadius = mix(8.1, 32.4, framePosition); // 9.0->8.1, 36.0->32.4 (10%減)
     float orbitSpeed = mix(1.5, 0.8, framePosition); // 速度は維持
     
     // より複雑な周回運動の計算
@@ -319,7 +319,7 @@ vec3 getChildCubePosition(vec3 parentPos, float time, float delay) {
     // 親との距離を一定に保つ
     vec3 toParent = finalPos - parentPos;
     float currentDist = length(toParent);
-    float targetDist = orbitRadius + 6.0; // 目標距離（基本半径 + オフセット）を3倍に
+    float targetDist = orbitRadius + 5.4; // 6.0->5.4 (10%減)
     
     // 距離の補正（スムーズに）
     float distanceCorrection = smoothstep(targetDist * 0.8, targetDist * 1.2, currentDist);
