@@ -107,6 +107,15 @@ float sdCubeGrid(vec3 p, vec3 totalSize) {
     
     // 小さなキューブの距離計算（サイズを半分に）
     float smallCubeDist = sdBox(localP, smallCubeSize * 0.2);
+    
+    // 中心からの距離に基づいて重みを計算
+    vec3 centerDist = abs(cellIndex - vec3(1.0));
+    float weight = max(centerDist.x, max(centerDist.y, centerDist.z));
+    
+    // 中心に近いキューブほど大きく
+    float sizeScale = 1.0 - weight * 0.2;
+    smallCubeDist *= 1.0 / sizeScale;
+    
     return smallCubeDist;
 }
 
@@ -115,7 +124,17 @@ float morphDistance(vec3 p, vec3 size, float morphFactor) {
     float singleCubeDist = sdBox(p, size);
     float cubeGridDist = sdCubeGrid(p, size * 2.0); // グリッドは少し大きめに
     
-    return mix(singleCubeDist, cubeGridDist, morphFactor);
+    // スムーズステップでモーフィングを補間
+    float smoothMorphFactor = smoothstep(0.0, 1.0, morphFactor);
+    
+    // 距離関数の補間時に形状を保持
+    float morphedDist = mix(singleCubeDist, cubeGridDist, smoothMorphFactor);
+    
+    // モーフィング中の形状の安定化
+    float stabilityFactor = sin(smoothMorphFactor * PI) * 0.5 + 0.5;
+    morphedDist *= mix(1.0, 1.2, stabilityFactor);
+    
+    return morphedDist;
 }
 
 /**
