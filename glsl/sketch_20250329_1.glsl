@@ -335,6 +335,12 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         // 距離と材質ID（最初は無効な値で初期化）
                         vec2 res = vec2(1e10, - 1.0);
                         
+                        // 回転する平面の距離を計算
+                        float planeDist = getRotatingPlaneDistance(p, iTime, 0);
+                        if (planeDist < res.x) {
+                            res = vec2(planeDist, 3.0); // マテリアルID 3.0を平面用に使用
+                        }
+                        
                         // 親キューブの位置と処理
                         vec3 cubePos = getFlyingCubePosition(iTime);
                         vec3 cubeSize = vec3(2.0);
@@ -846,6 +852,24 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                                         vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
                                         float specular = pow(max(dot(reflectDir, light), 0.0), 32.0);
                                         objColor += vec3(0.5) * specular * 0.3;
+                                    } else if (material < 3.5) { // 回転する平面
+                                        // 平面の色を時間とともに変化させる
+                                        objColor = vec3(
+                                            0.5 + 0.5 * sin(iTime * 0.7),
+                                            0.5 + 0.5 * sin(iTime * 0.9 + PI * 0.5),
+                                            0.5 + 0.5 * sin(iTime * 1.1 + PI)
+                                        ) * 0.3; // 暗めに設定
+                                        
+                                        // 反射効果を追加
+                                        vec3 reflectDir = reflect(rd, n);
+                                        vec3 reflectCol = getSkyboxPattern(reflectDir, iTime);
+                                        float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 3.0);
+                                        objColor = mix(objColor, reflectCol, 0.5 + fresnel * 0.3);
+                                        
+                                        // 鏡面ハイライトを追加
+                                        vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
+                                        float specular = pow(max(dot(reflectDir, light), 0.0), 16.0);
+                                        objColor += vec3(0.3) * specular * 0.2;
                                     } else { // 未使用
                                         objColor = vec3(1.0);
                                     }
