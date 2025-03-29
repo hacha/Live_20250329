@@ -636,321 +636,336 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         vec3 getSkyboxPattern(vec3 rd, float time) {
                             // 基本となる方向ベクトルを時間とともに歪ませる
                             vec3 dir = rd;
-                            dir.xy *= rot2D(sin(time * 0.3) * 0.5);
-                            dir.yz *= rot2D(cos(time * 0.25) * 0.6);
-                            dir.xz *= rot2D(sin(time * 0.2) * 0.4);
+                            dir.xy *= rot2D(sin(time * 0.5) * 0.8);
+                            dir.yz *= rot2D(cos(time * 0.4) * 0.9);
+                            dir.xz *= rot2D(sin(time * 0.6) * 0.7);
                             
-                            // 複数の周期のノイズを合成
-                            float n1 = smoothNoise(dir * 2.0 + vec3(time * 0.2));
-                            float n2 = smoothNoise(dir * 4.0 - vec3(time * 0.25));
-                            float n3 = smoothNoise(dir * 8.0 + vec3(time * 0.3));
-                            float n4 = smoothNoise(dir * 16.0 - vec3(time * 0.15));
+                            // より激しいノイズパターンを生成
+                            float n1 = smoothNoise(dir * 3.0 + vec3(time * 0.3));
+                            float n2 = smoothNoise(dir * 6.0 - vec3(time * 0.35));
+                            float n3 = smoothNoise(dir * 12.0 + vec3(time * 0.4));
+                            float n4 = smoothNoise(dir * 24.0 - vec3(time * 0.25));
                             
-                            // サイケデリックなパターン生成
-                            float pattern = n1 * 0.4 + n2 * 0.3 + n3 * 0.2 + n4 * 0.1;
+                            // ステップ関数でエッジを作成
+                            float edge1 = step(0.5, n1);
+                            float edge2 = step(0.4, n2);
+                            float edge3 = step(0.6, n3);
+                            float edge4 = step(0.45, n4);
                             
-                            // 鮮やかな色の設定
-                            vec3 color1 = vec3(0.8, 0.1, 0.8); // マゼンタ
-                            vec3 color2 = vec3(0.1, 0.8, 0.8); // シアン
-                            vec3 color3 = vec3(0.8, 0.8, 0.1); // イエロー
-                            vec3 color4 = vec3(0.2, 0.8, 0.2); // ネオングリーン
+                            // エッジパターンの合成
+                            float pattern = edge1 * 0.4 + edge2 * 0.3 + edge3 * 0.2 + edge4 * 0.1;
                             
-                            // 時間に基づく色の変化
-                            float t1 = sin(time * 0.5) * 0.5 + 0.5;
-                            float t2 = cos(time * 0.4) * 0.5 + 0.5;
-                            float t3 = sin(time * 0.3) * 0.5 + 0.5;
+                            // より鮮やかな色の設定
+                            vec3 color1 = vec3(1.0, 0.1, 1.0); // 強いマゼンタ
+                            vec3 color2 = vec3(0.1, 1.0, 1.0); // 強いシアン
+                            vec3 color3 = vec3(1.0, 1.0, 0.1); // 強いイエロー
+                            vec3 color4 = vec3(0.1, 1.0, 0.1); // 強いネオングリーン
                             
-                            // 色の混合
-                            vec3 finalColor = mix(color1, color2, pattern);
-                            finalColor = mix(finalColor, color3, smoothNoise(dir * 3.0 + vec3(time * 0.23)));
-                            finalColor = mix(finalColor, color4, smoothNoise(dir * 5.0 - vec3(time * 0.17)));
+                            // 時間に基づく色の変化（より急激に）
+                            float t1 = step(0.5, sin(time * 0.7));
+                            float t2 = step(0.5, cos(time * 0.6));
+                            float t3 = step(0.5, sin(time * 0.5));
                             
-                            // 渦巻きパターンの追加
+                            // 色の混合（ハードミックス）
+                            vec3 finalColor = mix(color1, color2, step(0.5, pattern));
+                            finalColor = mix(finalColor, color3, step(0.6, smoothNoise(dir * 4.0 + vec3(time * 0.33))));
+                            finalColor = mix(finalColor, color4, step(0.55, smoothNoise(dir * 7.0 - vec3(time * 0.27))));
+                            
+                            // 渦巻きパターンの追加（より急激な変化）
                             vec2 spiral = vec2(
-                                sin(atan(dir.z, dir.x) * 8.0 + time * 2.0),
-                                cos(atan(dir.y, length(dir.xz)) * 6.0 - time * 1.5)
+                                step(0.5, sin(atan(dir.z, dir.x) * 12.0 + time * 3.0)),
+                                step(0.5, cos(atan(dir.y, length(dir.xz)) * 10.0 - time * 2.5))
                             );
-                            float spiralPattern = smoothNoise(vec3(spiral * 3.0, time * 0.2)) * 0.5;
+                            float spiralPattern = step(0.5, smoothNoise(vec3(spiral * 4.0, time * 0.3)));
                             
-                            // 波紋パターンの追加
-                            float ripple = sin(length(dir) * 10.0 - time * 2.0) * 0.5 + 0.5;
+                            // 波紋パターンの追加（よりシャープに）
+                            float ripple = step(0.5, sin(length(dir) * 15.0 - time * 3.0));
                             
-                            // パターンの合成
-                            finalColor += vec3(0.8, 0.2, 0.8) * spiralPattern;
-                            finalColor += vec3(0.2, 0.8, 0.8) * ripple * 0.3;
+                            // パターンの合成（加算ではなく置き換え）
+                            finalColor = mix(finalColor, vec3(1.0, 0.2, 1.0), spiralPattern);
+                            finalColor = mix(finalColor, vec3(0.2, 1.0, 1.0), ripple);
                             
-                            // 色の彩度を上げる
-                            finalColor = pow(finalColor, vec3(0.8));
-                            finalColor = clamp(finalColor * 1.2, 0.0, 1.0);
+                            // コントラストを上げる
+                            finalColor = pow(finalColor, vec3(0.6));
+                            finalColor = clamp(finalColor * 1.5, 0.0, 1.0);
                             
-                            return finalColor;
-                        }
-                        
-                        void mainImage(out vec4 fragColor, in vec2 fragCoord)
-                        {
-                            // Normalized pixel coordinates (from 0 to 1)
-                            vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
-                            
-                            // カメラの設定
-                            float camRadius = 17.0; // カメラの回転半径
-                            float camHeight = 4.2; // カメラの基本の高さを3.2から4.2に変更
-                            float camSpeed = -0.2; // カメラの回転速度
-                            float camVerticalSpeed = 0.15; // カメラの上下運動の速度
-                            float camVerticalRange = 4.0; // カメラの上下運動の範囲
-                            
-                            // 注視点をキューブの位置に設定
-                            vec3 target = getFlyingCubePosition(iTime);
-                            
-                            // カメラの位置を計算（球体の周りを円を描いて回転）
-                            vec3 ro = vec3(
-                                camRadius * cos(iTime * camSpeed),
-                                max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)), // 最低高度を1.0に制限
-                                camRadius * sin(iTime * camSpeed)
-                            );
-                            
-                            // カメラの向きを計算
-                            vec3 forward = normalize(target - ro);
-                            vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
-                            vec3 up = cross(forward, right);
-                            
-                            // レイの方向を計算
-                            vec3 rd = normalize(forward + right * uv.x + up * uv.y);
-                            
-                            // レイマーチング
-                            float t = 0.0;
-                            float tmax = 80.0;
-                            float epsilon = 0.0002;
-                            float nearClip = 0.15; // ニアクリップ距離
-                            
-                            // 初期位置をニアクリップ位置に設定
-                            t = nearClip;
-                            
-                            // 球体からの影響を蓄積
-                            vec3 sphereInfluence = vec3(0.0);
-                            float totalDensity = 0.0;
-                            
-                            for(int i = 0; i < 100; i ++ ) {
-                                vec3 p = ro + rd * t;
-                                float d = map(p);
+                            // エッジ検出による境界強調
+                            float edge = length(vec2(
+                                    smoothNoise(dir + vec3(0.01, 0.0, 0.0)) - smoothNoise(dir - vec3(0.01, 0.0, 0.0)),
+                                    smoothNoise(dir + vec3(0.0, 0.01, 0.0)) - smoothNoise(dir - vec3(0.0, 0.01, 0.0))
+                                ));
                                 
-                                // 球体からの影響を計算
-                                vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                                vec3 q = mod(p + 0.5 * vec3(6.0), vec3(6.0)) - 0.5 * vec3(6.0);
-                                vec3 spherePos = vec3(0.0, 1.0, 0.0);
+                                // エッジを強調
+                                finalColor += vec3(1.0) * step(0.1, edge) * 0.5;
                                 
-                                // グリッドごとのxz方向のずれを計算（球体間の距離は6.0）
-                                float noiseScale = 0.5; // ノイズのスケール
-                                float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * 6.0;
-                                float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * 6.0;
-                                spherePos.x += offsetX;
-                                spherePos.z += offsetZ;
-                                
-                                vec3 localP = q - spherePos;
-                                
-                                // キューブの回転パラメータを取得
-                                vec4 rotationParams = getRotationParams(cellIndex, iTime);
-                                vec3 rotationAxis = rotationParams.xyz;
-                                float rotationAngle = rotationParams.w;
-                                
-                                // 回転を適用
-                                vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
-                                
-                                // キューブの距離計算
-                                vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
-                                float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
-                                
-                                // キューブの色を取得
-                                vec3 cubeColor = getCubeColor(cellIndex, iTime);
-                                
-                                // 点滅効果を適用
-                                float blinkFactor = blink(cellIndex, iTime);
-                                cubeColor *= blinkFactor;
-                                
-                                // 距離に基づいて影響を計算
-                                float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
-                                influence *= 0.1; // 影響の強さを調整
-                                
-                                // 影響を蓄積
-                                sphereInfluence += cubeColor * influence;
-                                totalDensity += influence;
-                                
-                                // 十分に近づいたか、遠すぎる場合は終了
-                                if (d < epsilon || t > tmax)break;
-                                
-                                // 距離を進める
-                                t += d;
+                                return finalColor;
                             }
                             
-                            // 色を設定
-                            vec3 col = vec3(0.0);
-                            float alpha = 1.0; // skyboxは常に不透明
-                            
-                            // 物体に当たった場合
-                            if (t < tmax) {
-                                vec3 p = ro + rd * t;
-                                vec3 n = calcNormal(p);
-                                float material = getMaterial(p);
+                            void mainImage(out vec4 fragColor, in vec2 fragCoord)
+                            {
+                                // Normalized pixel coordinates (from 0 to 1)
+                                vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
                                 
-                                // オブジェクトの色を設定
-                                vec3 objColor;
-                                if (material < 0.5) { // 地面
-                                    if (SHOW_GRID) {
-                                        // グリッド描画関数を呼び出し
-                                        vec4 gridResult = drawGrid(p, t);
-                                        objColor = gridResult.rgb;
-                                    } else {
-                                        // グリッドを表示しない場合は単色
-                                        objColor = vec3(0.0);
-                                    }
-                                } else if (material < 1.5) { // 球体
-                                    objColor = vec3(1.0, 1.0, 1.0); // 白色
-                                } else if (material < 2.05) { // グリッドキューブ本体
-                                    // グリッドの位置に基づいて色を変化
+                                // カメラの設定
+                                float camRadius = 17.0; // カメラの回転半径
+                                float camHeight = 4.2; // カメラの基本の高さを3.2から4.2に変更
+                                float camSpeed = -0.2; // カメラの回転速度
+                                float camVerticalSpeed = 0.15; // カメラの上下運動の速度
+                                float camVerticalRange = 4.0; // カメラの上下運動の範囲
+                                
+                                // 注視点をキューブの位置に設定
+                                vec3 target = getFlyingCubePosition(iTime);
+                                
+                                // カメラの位置を計算（球体の周りを円を描いて回転）
+                                vec3 ro = vec3(
+                                    camRadius * cos(iTime * camSpeed),
+                                    max(1.0, camHeight + camVerticalRange * sin(iTime * camVerticalSpeed)), // 最低高度を1.0に制限
+                                    camRadius * sin(iTime * camSpeed)
+                                );
+                                
+                                // カメラの向きを計算
+                                vec3 forward = normalize(target - ro);
+                                vec3 right = normalize(cross(vec3(0.0, 1.0, 0.0), forward));
+                                vec3 up = cross(forward, right);
+                                
+                                // レイの方向を計算
+                                vec3 rd = normalize(forward + right * uv.x + up * uv.y);
+                                
+                                // レイマーチング
+                                float t = 0.0;
+                                float tmax = 80.0;
+                                float epsilon = 0.0002;
+                                float nearClip = 0.15; // ニアクリップ距離
+                                
+                                // 初期位置をニアクリップ位置に設定
+                                t = nearClip;
+                                
+                                // 球体からの影響を蓄積
+                                vec3 sphereInfluence = vec3(0.0);
+                                float totalDensity = 0.0;
+                                
+                                for(int i = 0; i < 100; i ++ ) {
+                                    vec3 p = ro + rd * t;
+                                    float d = map(p);
+                                    
+                                    // 球体からの影響を計算
                                     vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
-                                    objColor = getCubeColor(cellIndex, iTime);
+                                    vec3 q = mod(p + 0.5 * vec3(6.0), vec3(6.0)) - 0.5 * vec3(6.0);
+                                    vec3 spherePos = vec3(0.0, 1.0, 0.0);
+                                    
+                                    // グリッドごとのxz方向のずれを計算（球体間の距離は6.0）
+                                    float noiseScale = 0.5; // ノイズのスケール
+                                    float offsetX = (smoothNoise(cellIndex * noiseScale) - 0.5) * 0.30 * 6.0;
+                                    float offsetZ = (smoothNoise(cellIndex * noiseScale + vec3(42.0)) - 0.5) * 0.30 * 6.0;
+                                    spherePos.x += offsetX;
+                                    spherePos.z += offsetZ;
+                                    
+                                    vec3 localP = q - spherePos;
+                                    
+                                    // キューブの回転パラメータを取得
+                                    vec4 rotationParams = getRotationParams(cellIndex, iTime);
+                                    vec3 rotationAxis = rotationParams.xyz;
+                                    float rotationAngle = rotationParams.w;
+                                    
+                                    // 回転を適用
+                                    vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
+                                    
+                                    // キューブの距離計算
+                                    vec3 gridCubeDims = vec3(0.5); // キューブのサイズ
+                                    float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
+                                    
+                                    // キューブの色を取得
+                                    vec3 cubeColor = getCubeColor(cellIndex, iTime);
+                                    
+                                    // 点滅効果を適用
                                     float blinkFactor = blink(cellIndex, iTime);
-                                    objColor *= blinkFactor;
-                                } else if (material < 4.5) { // 親キューブと子キューブ
-                                    // 基本の虹色効果
-                                    objColor = vec3(
-                                        0.5 + 0.5 * sin(iTime * 1.1),
-                                        0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
-                                        0.5 + 0.5 * sin(iTime * 1.5 + PI)
-                                    ) * 0.75;
+                                    cubeColor *= blinkFactor;
                                     
-                                    // 子キューブの場合は色を少し暗く
-                                    if (material > 4.05) {
-                                        float childIndex = (material - 4.1) / 0.045; // 0から19
-                                        objColor *= mix(0.9, 0.4, childIndex / 19.0); // だんだん暗く
-                                    }
+                                    // 距離に基づいて影響を計算
+                                    float influence = smoothstep(2.0, 0.0, abs(localGridCubeDist));
+                                    influence *= 0.1; // 影響の強さを調整
                                     
-                                    // 反射レイの計算
-                                    vec3 reflectDir = reflect(rd, n);
+                                    // 影響を蓄積
+                                    sphereInfluence += cubeColor * influence;
+                                    totalDensity += influence;
                                     
-                                    // 反射レイのレイマーチング
-                                    vec3 reflectPos = p + n * 0.002; // 表面から少し離す
-                                    float reflectT = 0.0;
-                                    float maxReflectDist = 20.0;
-                                    vec3 reflectCol = vec3(0.0);
-                                    bool hitSomething = false;
+                                    // 十分に近づいたか、遠すぎる場合は終了
+                                    if (d < epsilon || t > tmax)break;
                                     
-                                    // 反射レイのレイマーチング
-                                    for(int i = 0; i < 50; i ++ ) {
-                                        vec3 rp = reflectPos + reflectDir * reflectT;
-                                        float rd = map(rp);
+                                    // 距離を進める
+                                    t += d;
+                                }
+                                
+                                // 色を設定
+                                vec3 col = vec3(0.0);
+                                float alpha = 1.0; // skyboxは常に不透明
+                                
+                                // 物体に当たった場合
+                                if (t < tmax) {
+                                    vec3 p = ro + rd * t;
+                                    vec3 n = calcNormal(p);
+                                    float material = getMaterial(p);
+                                    
+                                    // オブジェクトの色を設定
+                                    vec3 objColor;
+                                    if (material < 0.5) { // 地面
+                                        if (SHOW_GRID) {
+                                            // グリッド描画関数を呼び出し
+                                            vec4 gridResult = drawGrid(p, t);
+                                            objColor = gridResult.rgb;
+                                        } else {
+                                            // グリッドを表示しない場合は単色
+                                            objColor = vec3(0.0);
+                                        }
+                                    } else if (material < 1.5) { // 球体
+                                        objColor = vec3(1.0, 1.0, 1.0); // 白色
+                                    } else if (material < 2.05) { // グリッドキューブ本体
+                                        // グリッドの位置に基づいて色を変化
+                                        vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
+                                        objColor = getCubeColor(cellIndex, iTime);
+                                        float blinkFactor = blink(cellIndex, iTime);
+                                        objColor *= blinkFactor;
+                                    } else if (material < 4.5) { // 親キューブと子キューブ
+                                        // 基本の虹色効果
+                                        objColor = vec3(
+                                            0.5 + 0.5 * sin(iTime * 1.1),
+                                            0.5 + 0.5 * sin(iTime * 1.3 + PI * 0.5),
+                                            0.5 + 0.5 * sin(iTime * 1.5 + PI)
+                                        ) * 0.75;
                                         
-                                        if (rd < epsilon) {
-                                            // 物体にヒット
-                                            hitSomething = true;
-                                            float rMaterial = getMaterial(rp);
-                                            
-                                            // 反射した先の物体の色を取得
-                                            if (rMaterial < 0.5) { // 地面
-                                                reflectCol = vec3(0.1); // 暗い地面
-                                            } else if (rMaterial < 2.5) { // 球体
-                                                vec3 cellIndex = floor((rp + 0.5 * vec3(6.0)) / vec3(6.0));
-                                                reflectCol = vec3(
-                                                    0.5 + 0.5 * sin(cellIndex.x * 1.5),
-                                                    0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
-                                                    0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
-                                                ) * vec3(0.6, 0.8, 1.0) * blink(cellIndex, iTime);
-                                            }
-                                            break;
+                                        // 子キューブの場合は色を少し暗く
+                                        if (material > 4.05) {
+                                            float childIndex = (material - 4.1) / 0.045; // 0から19
+                                            objColor *= mix(0.9, 0.4, childIndex / 19.0); // だんだん暗く
                                         }
                                         
-                                        reflectT += rd;
-                                        if (reflectT > maxReflectDist)break;
+                                        // 反射レイの計算
+                                        vec3 reflectDir = reflect(rd, n);
+                                        
+                                        // 反射レイのレイマーチング
+                                        vec3 reflectPos = p + n * 0.002; // 表面から少し離す
+                                        float reflectT = 0.0;
+                                        float maxReflectDist = 20.0;
+                                        vec3 reflectCol = vec3(0.0);
+                                        bool hitSomething = false;
+                                        
+                                        // 反射レイのレイマーチング
+                                        for(int i = 0; i < 50; i ++ ) {
+                                            vec3 rp = reflectPos + reflectDir * reflectT;
+                                            float rd = map(rp);
+                                            
+                                            if (rd < epsilon) {
+                                                // 物体にヒット
+                                                hitSomething = true;
+                                                float rMaterial = getMaterial(rp);
+                                                
+                                                // 反射した先の物体の色を取得
+                                                if (rMaterial < 0.5) { // 地面
+                                                    reflectCol = vec3(0.1); // 暗い地面
+                                                } else if (rMaterial < 2.5) { // 球体
+                                                    vec3 cellIndex = floor((rp + 0.5 * vec3(6.0)) / vec3(6.0));
+                                                    reflectCol = vec3(
+                                                        0.5 + 0.5 * sin(cellIndex.x * 1.5),
+                                                        0.5 + 0.5 * sin(cellIndex.y * 1.7 + 2.0),
+                                                        0.5 + 0.5 * sin(cellIndex.z * 1.9 + 4.0)
+                                                    ) * vec3(0.6, 0.8, 1.0) * blink(cellIndex, iTime);
+                                                }
+                                                break;
+                                            }
+                                            
+                                            reflectT += rd;
+                                            if (reflectT > maxReflectDist)break;
+                                        }
+                                        
+                                        // 反射しなかった場合は空の色（暗めのグラデーション）
+                                        if (!hitSomething) {
+                                            float skyGrad = 0.5 + 0.5 * reflectDir.y;
+                                            reflectCol = vec3(0.4, 0.5, 0.6) * skyGrad;
+                                        }
+                                        
+                                        // フレネル効果の計算
+                                        float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 5.0);
+                                        
+                                        // 最終的な色の合成
+                                        objColor = mix(objColor, reflectCol, 0.8 + fresnel * 0.2);
+                                        
+                                        // 鏡面ハイライトの追加
+                                        vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
+                                        float specular = pow(max(dot(reflectDir, light), 0.0), 32.0);
+                                        objColor += vec3(1.0) * specular * 0.5;
+                                    } else { // 未使用
+                                        objColor = vec3(1.0);
                                     }
                                     
-                                    // 反射しなかった場合は空の色（暗めのグラデーション）
-                                    if (!hitSomething) {
-                                        float skyGrad = 0.5 + 0.5 * reflectDir.y;
-                                        reflectCol = vec3(0.4, 0.5, 0.6) * skyGrad;
-                                    }
-                                    
-                                    // フレネル効果の計算
-                                    float fresnel = pow(1.0 - max(0.0, dot(n, - rd)), 5.0);
-                                    
-                                    // 最終的な色の合成
-                                    objColor = mix(objColor, reflectCol, 0.8 + fresnel * 0.2);
-                                    
-                                    // 鏡面ハイライトの追加
+                                    // 単純な拡散照明
                                     vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
-                                    float specular = pow(max(dot(reflectDir, light), 0.0), 32.0);
-                                    objColor += vec3(1.0) * specular * 0.5;
-                                } else { // 未使用
-                                    objColor = vec3(1.0);
-                                }
-                                
-                                // 単純な拡散照明
-                                vec3 light = normalize(vec3(1.0, 0.50, - 1.0));
-                                float diff = max(dot(n, light), 0.0);
-                                
-                                // 環境光+拡散光
-                                if (material < 0.5) { // 地面の場合はグリッドラインを強調するため拡散を抑える
-                                    col = objColor * (0.9 + 0.1 * diff);
+                                    float diff = max(dot(n, light), 0.0);
+                                    
+                                    // 環境光+拡散光
+                                    if (material < 0.5) { // 地面の場合はグリッドラインを強調するため拡散を抑える
+                                        col = objColor * (0.9 + 0.1 * diff);
+                                    } else {
+                                        col = objColor * (0.3 + 0.7 * diff);
+                                    }
+                                    
+                                    // ソフトシャドウを計算
+                                    float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 16.0);
+                                    
+                                    // 光源の強度と色
+                                    vec3 lightColor = vec3(1.0, 0.9, 0.8);
+                                    
+                                    // 影を適用（ソフトシャドウ）
+                                    col = col * mix(vec3(0.2), lightColor, shadow);
                                 } else {
-                                    col = objColor * (0.3 + 0.7 * diff);
+                                    // 物体に当たらなかった場合はskyboxを表示
+                                    col = getSkyboxPattern(rd, iTime);
                                 }
                                 
-                                // ソフトシャドウを計算
-                                float shadow = calcSoftShadow(p + n * 0.002, light, 0.02, 5.0, 16.0);
+                                // 球体の影響を加算（物体に当たった場合のみ）
+                                if (t < tmax) {
+                                    col += sphereInfluence;
+                                }
                                 
-                                // 光源の強度と色
-                                vec3 lightColor = vec3(1.0, 0.9, 0.8);
-                                
-                                // 影を適用（ソフトシャドウ）
-                                col = col * mix(vec3(0.2), lightColor, shadow);
-                            } else {
-                                // 物体に当たらなかった場合はskyboxを表示
-                                col = getSkyboxPattern(rd, iTime);
-                            }
-                            
-                            // 球体の影響を加算（物体に当たった場合のみ）
-                            if (t < tmax) {
-                                col += sphereInfluence;
-                            }
-                            
-                            // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
-                            if (SHOW_GRID) {
-                                float tGrid = intersectGrid(ro, rd);
-                                if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
-                                    // グリッドとの交差点
-                                    vec3 gridPos = ro + rd * tGrid;
+                                // 透明なグリッドを描画（物体がない場合でもグリッドは表示）
+                                if (SHOW_GRID) {
+                                    float tGrid = intersectGrid(ro, rd);
+                                    if (tGrid > 0.0 &&(t > tmax || tGrid < t)) {
+                                        // グリッドとの交差点
+                                        vec3 gridPos = ro + rd * tGrid;
+                                        
+                                        // グリッドの色を取得（カメラからの距離も渡す）
+                                        vec4 gridResult = drawGrid(gridPos, tGrid);
+                                        
+                                        // アルファブレンディング
+                                        if (gridResult.a > 0.001) {
+                                            col = mix(col, gridResult.rgb, gridResult.a);
+                                            alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
+                                        }
+                                    }
                                     
-                                    // グリッドの色を取得（カメラからの距離も渡す）
-                                    vec4 gridResult = drawGrid(gridPos, tGrid);
-                                    
-                                    // アルファブレンディング
-                                    if (gridResult.a > 0.001) {
-                                        col = mix(col, gridResult.rgb, gridResult.a);
-                                        alpha = max(alpha, gridResult.a); // グリッドのアルファ値を反映
+                                    // Y軸との交差を計算
+                                    float tYAxis = intersectYAxis(ro, rd);
+                                    if (tYAxis > 0.0 &&(t > tmax || tYAxis < t)) {
+                                        // Y軸との交差点
+                                        vec3 yAxisPos = ro + rd * tYAxis;
+                                        
+                                        // Y軸の高さに応じたフェードアウト
+                                        float yHeight = abs(yAxisPos.y);
+                                        float yFade = 1.0 - clamp(yHeight / 10.0, 0.0, 1.0);
+                                        
+                                        // Y軸の色（緑）
+                                        vec3 yAxisColor = vec3(0.0, 0.7, 0.0) * yFade;
+                                        float yAxisAlpha = 0.8 * yFade;
+                                        
+                                        // アルファブレンディング
+                                        col = mix(col, yAxisColor, yAxisAlpha);
+                                        alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
                                     }
                                 }
                                 
-                                // Y軸との交差を計算
-                                float tYAxis = intersectYAxis(ro, rd);
-                                if (tYAxis > 0.0 &&(t > tmax || tYAxis < t)) {
-                                    // Y軸との交差点
-                                    vec3 yAxisPos = ro + rd * tYAxis;
-                                    
-                                    // Y軸の高さに応じたフェードアウト
-                                    float yHeight = abs(yAxisPos.y);
-                                    float yFade = 1.0 - clamp(yHeight / 10.0, 0.0, 1.0);
-                                    
-                                    // Y軸の色（緑）
-                                    vec3 yAxisColor = vec3(0.0, 0.7, 0.0) * yFade;
-                                    float yAxisAlpha = 0.8 * yFade;
-                                    
-                                    // アルファブレンディング
-                                    col = mix(col, yAxisColor, yAxisAlpha);
-                                    alpha = max(alpha, yAxisAlpha); // Y軸のアルファ値を反映
-                                }
+                                // ガンマ補正
+                                col = pow(col, vec3(0.4545));
+                                
+                                // Output to screen
+                                fragColor = vec4(col, alpha);
                             }
-                            
-                            // ガンマ補正
-                            col = pow(col, vec3(0.4545));
-                            
-                            // Output to screen
-                            fragColor = vec4(col, alpha);
-                        }
