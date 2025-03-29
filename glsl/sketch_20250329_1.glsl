@@ -441,6 +441,10 @@ vec2 mapObjects(vec3 p) {
     p.x = abs(p.x);
     p.z = abs(p.z);
     
+    // Y座標の絶対値をスムーズに処理
+    float smoothK = 1.0; // スムーズさの制御パラメータ
+    p.y = smin(p.y, - p.y, smoothK);
+    
     // 距離と材質ID（最初は無効な値で初期化）
     vec2 res = vec2(1e10, - 1.0);
     
@@ -461,7 +465,7 @@ vec2 mapObjects(vec3 p) {
     // 40個の子オブジェクトを追加
     const int NUM_CHILDREN = 40;
     float baseDelay = 0.15;
-    float maxSize = 0.95;
+    float maxSize = 1.95;
     float minSize = 0.20;
     float blendK = 8.0;
     
@@ -482,7 +486,7 @@ vec2 mapObjects(vec3 p) {
             // 立方体のサイズを球体の半径に基づいて設定
             vec3 cubeSize = vec3(childRadius * 0.8); // 0.8を掛けて球体より少し小さく
             childDist = sdBox(childRotatedP, cubeSize);
-        } else if (i % 9 == 8) {
+        } else if (i % 8 == 7) {
             // Y軸方向に大きく伸びた立方体を表示
             vec3 elongatedSize = vec3(childRadius * 0.6, childRadius * 44.0, childRadius * 0.6);
             childDist = sdBox(childRotatedP, elongatedSize);
