@@ -147,8 +147,8 @@ vec2 mapObjects(vec3 p) {
     spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed); // ゆっくりとした上下運動
     
     // グリッドごとのxz方向のずれを計算
-    float offsetX = (hash(cellIndex) - 0.5) * 0.30 * spacing; // -15%から+15%のずれ
-    float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.30 * spacing; // 異なるハッシュ値を使用
+    float offsetX = (hash(cellIndex) - 0.5) * 0.30 * spacing;
+    float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.30 * spacing;
     spherePos.x += offsetX;
     spherePos.z += offsetZ;
     
@@ -411,6 +411,13 @@ vec3 calcNormal(vec3 p)
             vec3 cellIndex = floor((p + 0.5 * vec3(6.0)) / vec3(6.0));
             vec3 q = mod(p + 0.5 * vec3(6.0), vec3(6.0)) - 0.5 * vec3(6.0);
             vec3 spherePos = vec3(0.0, 1.0, 0.0);
+            
+            // グリッドごとのxz方向のずれを計算（球体間の距離は6.0）
+            float offsetX = (hash(cellIndex) - 0.5) * 0.30 * 6.0;
+            float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.30 * 6.0;
+            spherePos.x += offsetX;
+            spherePos.z += offsetZ;
+            
             vec3 localP = q - spherePos;
             float sphereDist = length(localP) - 1.0;
             
