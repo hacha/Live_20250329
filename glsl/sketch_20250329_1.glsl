@@ -358,6 +358,47 @@ vec3 calcNormal(vec3 p) {
         return vec3(abs(q.z + (q.w - q.y) / (6.0 * d + e)), d / (q.x + e), q.x);
     }
     
+    // ナバホ族の幾何学模様を生成する関数
+    vec3 navajoPattern(vec2 uv, float time) {
+        // スケールの調整
+        uv *= 4.0;
+        
+        // 時間による緩やかな移動
+        uv.x += sin(time * 0.1) * 0.5;
+        uv.y += cos(time * 0.08) * 0.5;
+        
+        // 基本グリッドの作成
+        vec2 id = floor(uv);
+        vec2 gv = fract(uv) - 0.5;
+        
+        // ダイヤモンドパターンの基本形
+        float diamond = abs(gv.x) + abs(gv.y);
+        
+        // ジグザグパターン
+        float zigzag = sin(uv.x * 3.0 + time * 0.2) * cos(uv.y * 3.0 + time * 0.15);
+        
+        // 階段パターン
+        float stairs = step(0.5, fract((uv.x + uv.y) * 2.0));
+        
+        // パターンの組み合わせ
+        float pattern = mix(diamond, zigzag, 0.5) + stairs * 0.3;
+        
+        // ハッシュ関数を使用してランダムな変化を追加
+        float h = hash(vec3(id, time * 0.1));
+        
+        // 色の設定（ナバホ族の伝統的な色）
+        vec3 col1 = vec3(0.8, 0.4, 0.2); // テラコッタ
+        vec3 col2 = vec3(0.2, 0.1, 0.05); // ダークブラウン
+        vec3 col3 = vec3(0.9, 0.8, 0.6); // サンド
+        
+        // パターンに基づいて色を混ぜる
+        vec3 finalColor = mix(col1, col2, pattern);
+        finalColor = mix(finalColor, col3, stairs * h);
+        
+        // 全体的な暗さの調整（背景として控えめに）
+        return finalColor * 0.15;
+    }
+    
     void mainImage(out vec4 fragColor, in vec2 fragCoord) {
         vec2 uv = (fragCoord - 0.5 * iResolution.xy) / iResolution.y;
         
@@ -466,8 +507,9 @@ vec3 calcNormal(vec3 p) {
             float shadow = calcSoftShadow(p + n * 0.002, baseLight, 0.02, 2.0, 16.0);
             col = col * mix(vec3(0.2), vec3(1.0), shadow);
         } else {
-            // 背景色
-            col = vec3(0.0);
+            // 背景にナバホ族の模様を適用
+            vec2 bgUV = rd.xy / rd.z;
+            col = navajoPattern(bgUV, iTime);
         }
         
         // ガンマ補正
