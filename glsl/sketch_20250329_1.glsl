@@ -393,62 +393,6 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             }
                         }
                         
-                        // レペテーションの設定（x-z平面のみ）
-                        float spacing = 6.0; // キューブ間の距離
-                        vec2 repetition = vec2(spacing);
-                        vec2 q = mod(p.xz + 0.5 * repetition, repetition) - 0.5 * repetition;
-                        
-                        // オリジナルの位置を保存（マテリアルIDの変更に使用）
-                        vec3 cellIndex = vec3(floor((p.x + 0.5 * spacing) / spacing),
-                        0.0, // y方向のインデックスは常に0
-                        floor((p.z + 0.5 * spacing) / spacing));
-                        
-                        // インデックスが奇数の場合はスキップ
-                        if (!isOddIndex(cellIndex)) {
-                            // 基本位置（固定）
-                            vec3 basePos = vec3(0.0, 1.0, 0.0);
-                            vec3 localP = vec3(q.x, p.y, q.y) - basePos;
-                            
-                            // キューブの回転パラメータを取得
-                            vec4 rotationParams = getRotationParams(cellIndex, iTime);
-                            vec3 rotationAxis = rotationParams.xyz;
-                            float rotationAngle = rotationParams.w;
-                            
-                            // 回転を適用
-                            vec3 rotatedLocalP = rotateMatrix(rotationAxis, rotationAngle) * localP;
-                            
-                            // キューブの距離計算
-                            vec3 gridCubeDims = vec3(0.5);
-                            float localGridCubeDist = sdBox(rotatedLocalP, gridCubeDims);
-                            
-                            // キューブとの距離を計算
-                            float distToCube = length(p - cubePos) - 2.0;
-                            
-                            // キューブに近い場合、グリッドのキューブを縮小
-                            float shrinkRange = 4.0;
-                            float shrinkFactor = smoothstep(0.0, shrinkRange, distToCube);
-                            vec3 dynamicSize = gridCubeDims * mix(0.2, 1.0, shrinkFactor);
-                            
-                            localGridCubeDist = sdBox(rotatedLocalP, dynamicSize);
-                            
-                            // 地面からの距離に応じたスムージング
-                            float groundDistance = basePos.y;
-                            float smoothRange = 1.2;
-                            float smoothFactor = smoothstep(0.0, smoothRange, groundDistance);
-                            localGridCubeDist = mix(sdBox(rotatedLocalP, gridCubeDims * 1.5), localGridCubeDist, smoothFactor);
-                            
-                            // キューブの距離と材質IDを更新
-                            if (localGridCubeDist < res.x) {
-                                res = vec2(localGridCubeDist, 2.0);
-                            }
-                        }
-                        
-                        // 地面（平面）
-                        float planeDist = p.y;
-                        if (planeDist < res.x) {
-                            res = vec2(planeDist, 0.0);
-                        }
-                        
                         return res;
                     }
                     
@@ -636,7 +580,7 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                         vec3 getSkyboxPattern(vec3 rd, float time) {
                             // 万華鏡効果のための方向ベクトルの変換
                             vec3 dir = rd;
-                            float kaleidNum = 8.0; // 分割数
+                            float kaleidNum = 18.0; // 分割数
                             
                             // 方向ベクトルを極座標に変換
                             float theta = atan(dir.z, dir.x);
@@ -681,13 +625,13 @@ float getRotatingPlaneDistance(vec3 p, float time, int planeId) {
                             vec3 color4 = vec3(0.0, 1.0, 0.0); // 純グリーン
                             
                             // 時間に基づく色の変化（より急激に）
-                            float t1 = step(0.5, sin(time * 0.7));
+                            float t1 = step(0.5, sin(time * 10.7));
                             float t2 = step(0.5, cos(time * 0.6));
                             float t3 = step(0.5, sin(time * 0.5));
                             
                             // 色の混合（ハードミックス）
                             vec3 finalColor = mix(color1, color2, step(0.5, pattern));
-                            finalColor = mix(finalColor, color3, step(0.6, smoothNoise(dir * 4.0 + vec3(time * 0.33))));
+                            finalColor = mix(finalColor, color3, step(0.6, smoothNoise(dir * 5.0 + vec3(time * 0.35))));
                             finalColor = mix(finalColor, color4, step(0.55, smoothNoise(dir * 7.0 - vec3(time * 0.27))));
                             
                             // 渦巻きパターンの追加（より急激な変化）
