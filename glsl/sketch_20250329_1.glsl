@@ -34,10 +34,6 @@ vec3 getFlyingCubePosition(float time) {
         5.0 * sin(time * 0.9 + PI * 0.25)
     );
     
-    // X軸とZ軸での鏡像反転
-    basePos.x = abs(basePos.x); // X軸での反転
-    basePos.z = abs(basePos.z); // Z軸での反転
-    
     return basePos;
 }
 
@@ -74,6 +70,7 @@ vec2 mapObjects(vec3 p) {
     
     // 飛び回るキューブの処理
     vec3 cubePos = getFlyingCubePosition(iTime);
+    
     vec3 cubeSize = vec3(2.0); // キューブのサイズを2倍に
     
     // キューブの回転
