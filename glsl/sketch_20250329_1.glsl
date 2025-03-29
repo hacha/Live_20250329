@@ -60,20 +60,35 @@ float blink(vec3 cellIndex, float time) {
 
 // 飛び回るキューブの位置を計算する関数
 vec3 getFlyingCubePosition(float time) {
-    // 極座標のパラメータ
-    float radius = 12.0; // 回転半径
-    float theta = time * 0.97; // 水平面での角度
-    float phi = time * 0.85; // 垂直方向の角度
-    float height = 5.5; // 基準となる高さ
+    // 基本となる円運動のパラメータ
+    float baseRadius = 12.0;
+    float baseHeight = 5.5;
     
-    // 極座標から直交座標への変換
-    vec3 basePos = vec3(
-        radius * cos(theta), // x座標
-        height + 2.0 * sin(phi + PI * 0.5), // y座標
-        radius * sin(theta)// z座標
-    );
+    // 複数の周期を組み合わせた水平面での動き
+    float theta1 = time * 0.97;
+    float theta2 = time * 0.53;
+    float theta3 = time * 1.31;
     
-    return basePos;
+    // 複数の周期を組み合わせた垂直方向の動き
+    float phi1 = time * 0.85;
+    float phi2 = time * 0.67;
+    float phi3 = time * 1.23;
+    
+    // 半径の変動
+    float radiusVar = sin(time * 0.43) * 2.0;
+    float radius = baseRadius + radiusVar;
+    
+    // 高さの変動
+    float heightVar1 = sin(phi1 + PI * 0.5) * 2.0;
+    float heightVar2 = cos(phi2) * 1.5;
+    float heightVar3 = sin(phi3) * 1.0;
+    float height = baseHeight + heightVar1 + heightVar2 + heightVar3;
+    
+    // 水平面での位置の計算（複数の円運動の合成）
+    float x = radius * (cos(theta1) * 0.6 + cos(theta2) * 0.3 + cos(theta3) * 0.1);
+    float z = radius * (sin(theta1) * 0.6 + sin(theta2) * 0.3 + sin(theta3) * 0.1);
+    
+    return vec3(x, height, z);
 }
 
 // 回転行列を生成する関数
