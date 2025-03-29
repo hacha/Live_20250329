@@ -147,8 +147,8 @@ vec2 mapObjects(vec3 p) {
     spherePos.y += wobbleRange * sin(iTime * 0.25 + wobbleSpeed); // ゆっくりとした上下運動
     
     // グリッドごとのxz方向のずれを計算
-    float offsetX = (hash(cellIndex) - 0.5) * 0.05 * spacing; // -2.5%から+2.5%のずれ
-    float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.05 * spacing; // 異なるハッシュ値を使用
+    float offsetX = (hash(cellIndex) - 0.5) * 0.10 * spacing; // -5%から+5%のずれ
+    float offsetZ = (hash(cellIndex + vec3(42.0)) - 0.5) * 0.10 * spacing; // 異なるハッシュ値を使用
     spherePos.x += offsetX;
     spherePos.z += offsetZ;
     
